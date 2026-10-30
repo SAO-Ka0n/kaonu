@@ -56,10 +56,10 @@ function DemoPanel() {
       <div className="rounded bg-surface p-4 text-13 leading-relaxed">
         <b className="mb-1 block">눌러 볼 것</b>
         <ol className="list-decimal space-y-1 pl-4 text-sub">
-          <li>홈에서 드릴을 모두 체크하면 회고 화면이 떠요</li>
-          <li>홈의 "영상 보고 시작"에서 영상 구간을 눌러 보세요</li>
-          <li>"다음 날로 넘기기"를 누르며 레슨을 끝내면 통과 테스트가 나와요</li>
-          <li>교본에서 잠긴 단원을 눌러 보세요</li>
+          <li>홈의 "연습 시작"을 누르고, 큰 버튼으로 공을 한 개씩 세어 보세요</li>
+          <li>연습 모드 오른쪽 위 "영상"에서 영상 구간을 눌러 보세요</li>
+          <li>"다음 날로 넘기기"를 누르며 레슨을 끝내면 통과 테스트 날이 와요. 공마다 성공/실패를 눌러요</li>
+          <li>마지막 화면에서 회고를 남기고 기록 탭의 친 공 수를 확인해 보세요</li>
         </ol>
       </div>
     </aside>

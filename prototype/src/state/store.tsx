@@ -1,16 +1,17 @@
 import { createContext, useContext, useEffect, useReducer, useState, type ReactNode } from 'react'
 import { PARTS } from '@/data/content'
 import {
-  addDays, chaptersOf, extraAssignment, findLesson, isAssignmentDone, nextAssignment, toDateString,
+  addDays, chaptersOf, extraAssignment, findLesson, isAssignmentDone, migrateState, nextAssignment, toDateString,
   type AppState, type DayLog, type TestResult,
 } from '@/logic/progress'
 
-const KEY = 'golf-bible-proto-v2' // v2: 테스트 결과에 통과 기준과 공 개수 추가
+const KEY = 'golf-bible-proto-v3' // v3: 실제로 누른 수(counts)와 테스트 공별 기록(shots)
+const OLD_KEYS = ['golf-bible-proto-v2']
 
 function ensureDay(s: AppState, date: string): AppState {
   if (s.days[date]) return s
   const next = nextAssignment(PARTS, s)
-  const day: DayLog = { date, assignments: next ? [next] : [], checked: [], tests: [] }
+  const day: DayLog = { date, assignments: next ? [next] : [], checked: [], tests: [], counts: {}, shots: {} }
   return { ...s, days: { ...s.days, [date]: day } }
 }
 
@@ -34,7 +35,7 @@ export function demoState(): AppState {
   }
   const allDrills = (lessonIdx: number) => c5.lessons[lessonIdx].drills.map((x) => x.id)
   const days: Record<string, DayLog> = {}
-  const put = (date: string, p: Partial<DayLog>) => { days[date] = { date, assignments: [], checked: [], tests: [], ...p } }
+  const put = (date: string, p: Partial<DayLog>) => { days[date] = { date, assignments: [], checked: [], tests: [], counts: {}, shots: {}, ...p } }
   put(d(-16), { assignments: [{ type: 'test', chapterId: c2.id }], tests: [test(c2, -2)], checked: [c2.reviewDrill.id] })
   put(d(-15), { assignments: [{ type: 'test', chapterId: c2.id }], tests: [test(c2, 0)], checked: [c2.reviewDrill.id], reflection: { good: '그립 압력을 일정하게 유지했다', fix: '정렬할 때 발끝이 오른쪽을 본다' } })
   put(d(-12), { assignments: [{ type: 'test', chapterId: c3.id }], tests: [test(c3, -3)], checked: [c3.reviewDrill.id] })
@@ -51,7 +52,10 @@ export function demoState(): AppState {
 }
 
 type Action =
-  | { type: 'toggle'; id: string }
+  | { type: 'check'; id: string; on: boolean }
+  | { type: 'count'; id: string; delta: number; target: number }
+  | { type: 'shot'; chapterId: string; ok: boolean; of: number; need: number }
+  | { type: 'undoShot'; chapterId: string }
   | { type: 'extra' }
   | { type: 'test'; result: TestResult }
   | { type: 'reflect'; good: string; fix: string }
@@ -62,15 +66,33 @@ type Action =
 function reducer(s: AppState, a: Action): AppState {
   const day = s.days[s.today]
   const setDay = (p: Partial<DayLog>): AppState => ({ ...s, days: { ...s.days, [s.today]: { ...day, ...p } } })
+  // 체크 상태가 바뀐 날을 저장하고, 드릴을 모두 끝낸 레슨을 완료 목록에 더한다
+  const withDay = (next: DayLog): AppState => {
+    const done = next.assignments.flatMap((x) => (x.type === 'lesson' && isAssignmentDone(PARTS, next, x) ? [x.lessonId] : []))
+    return { ...s, completedLessons: [...new Set([...s.completedLessons, ...done])], days: { ...s.days, [s.today]: next } }
+  }
+  const setChecked = (d: DayLog, id: string, on: boolean): DayLog =>
+    ({ ...d, checked: on ? [...new Set([...d.checked, id])] : d.checked.filter((x) => x !== id) })
   switch (a.type) {
-    case 'toggle': {
-      const checked = day.checked.includes(a.id) ? day.checked.filter((x) => x !== a.id) : [...day.checked, a.id]
-      const next = { ...day, checked }
-      const done = next.assignments
-        .filter((x) => x.type === 'lesson' && isAssignmentDone(PARTS, next, x))
-        .map((x) => (x.type === 'lesson' ? x.lessonId : ''))
-      return { ...s, completedLessons: [...new Set([...s.completedLessons, ...done])], days: { ...s.days, [s.today]: next } }
+    case 'check':
+      return withDay(setChecked(day, a.id, a.on))
+    case 'count': {
+      const n = Math.max(0, Math.min(a.target, (day.counts[a.id] ?? 0) + a.delta))
+      return withDay(setChecked({ ...day, counts: { ...day.counts, [a.id]: n } }, a.id, n >= a.target))
     }
+    case 'shot': {
+      const shots = [...(day.shots[a.chapterId] ?? []), a.ok]
+      if (shots.length < a.of) return setDay({ shots: { ...day.shots, [a.chapterId]: shots } })
+      // 마지막 공: 결과를 자동으로 기록하고 진행 중 기록을 비운다
+      const score = shots.filter(Boolean).length
+      const r: TestResult = { chapterId: a.chapterId, score, of: a.of, need: a.need, passed: score >= a.need, balls: a.of }
+      const { [a.chapterId]: _, ...rest } = day.shots
+      void _
+      const s2 = setDay({ shots: rest, tests: [...day.tests, r] })
+      return r.passed && !s.passed.includes(r.chapterId) ? { ...s2, passed: [...s.passed, r.chapterId] } : s2
+    }
+    case 'undoShot':
+      return setDay({ shots: { ...day.shots, [a.chapterId]: (day.shots[a.chapterId] ?? []).slice(0, -1) } })
     case 'extra': {
       const next = extraAssignment(PARTS, s, day)
       return next ? setDay({ assignments: [...day.assignments, next] }) : s
@@ -95,12 +117,12 @@ function reducer(s: AppState, a: Action): AppState {
 
 function load(): AppState {
   try {
-    const raw = localStorage.getItem(KEY)
-    if (raw) {
-      const s = JSON.parse(raw) as AppState
-      // 저장된 레슨 id가 현재 교본에 없으면 예시 상태로 시작
-      const ok = Object.values(s.days).every((d) => d.assignments.every((x) => x.type === 'test' || findLesson(PARTS, x.lessonId)))
-      if (ok) return s
+    const key = [KEY, ...OLD_KEYS].find((k) => localStorage.getItem(k))
+    const s = key ? migrateState(JSON.parse(localStorage.getItem(key)!)) : null
+    // 저장된 레슨 id가 현재 교본에 없으면 예시 상태로 시작
+    if (s && Object.values(s.days).every((d) => d.assignments.every((x) => x.type === 'test' || findLesson(PARTS, x.lessonId)))) {
+      for (const k of OLD_KEYS) localStorage.removeItem(k)
+      return s
     }
   } catch { /* 저장소를 못 쓰면 예시 상태로 */ }
   return demoState()

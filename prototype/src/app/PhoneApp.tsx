@@ -7,6 +7,7 @@ import { NavCtx, type Nav, type Route, type Tab } from './nav'
 import { Home } from './screens/Home'
 import { Book, ChapterScreen, LessonScreen } from './screens/Book'
 import { TestScreen } from './screens/Test'
+import { Session } from './screens/Session'
 import { Log, Mental } from './screens/Log'
 import { Button, Sheet } from './ui'
 
@@ -44,6 +45,16 @@ export function PhoneApp() {
   if (!s.onboarded) return <Onboarding onStart={() => dispatch({ type: 'onboard' })} />
 
   const top = stack[stack.length - 1]
+  if (top?.name === 'session') {
+    return (
+      <NavCtx.Provider value={nav}>
+        <div className="relative h-full overflow-hidden">
+          <Session key={JSON.stringify(top)} start={top.start} only={top.only} />
+          {saveFailed && <p role="alert" className="absolute inset-x-4 top-20 rounded-sm bg-surface p-3 text-13 ring-1 ring-inset ring-line">기록을 저장하지 못했어요. 브라우저의 저장 공간 설정을 확인해 주세요.</p>}
+        </div>
+      </NavCtx.Provider>
+    )
+  }
   const screen = top
     ? top.name === 'lesson' ? <LessonScreen key={top.lessonId} lessonId={top.lessonId} />
       : top.name === 'test' ? <TestScreen key={top.chapterId} chapterId={top.chapterId} />

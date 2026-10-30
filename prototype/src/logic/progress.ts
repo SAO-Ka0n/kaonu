@@ -11,6 +11,8 @@ export type DayLog = {
   assignments: Assignment[] // 그날 정해진 레슨. 첫 항목은 자정까지 고정, 뒤는 "다음 레슨 미리 하기"
   checked: string[] // 체크한 드릴 id (멘탈 드릴은 'mental:<카드 id>')
   tests: TestResult[]
+  counts: Record<string, number> // 연습 모드에서 실제로 누른 수 (공, 반복 횟수, 타이머 초)
+  shots: Record<string, boolean[]> // 진행 중인 통과 테스트의 공별 성공 여부 (끝나면 tests로 옮기고 비움)
   reflection?: { good: string; fix: string }
 }
 
@@ -140,14 +142,86 @@ export function streak(days: Record<string, DayLog>, today: string): number {
   return n
 }
 
-export function ballsOf(parts: Part[], days: Record<string, DayLog>): number {
-  const drills = new Map<string, number>()
+// 친 공 = 공 단계는 실제로 누른 수, 누른 기록이 없는 옛 기록과 다른 단계는 체크된 드릴의 계획 공 수,
+// 여기에 끝난 테스트의 공과 진행 중인 테스트의 공을 더한다.
+export function ballsOfDay(parts: Part[], day: DayLog): number {
+  const drills = new Map<string, Drill>()
   for (const ch of chaptersOf(parts)) {
-    for (const l of ch.lessons) for (const d of l.drills) drills.set(d.id, d.balls ?? 0)
-    drills.set(ch.reviewDrill.id, ch.reviewDrill.balls ?? 0)
+    for (const l of ch.lessons) for (const d of l.drills) drills.set(d.id, d)
+    drills.set(ch.reviewDrill.id, ch.reviewDrill)
   }
-  return Object.values(days).reduce((sum, day) =>
-    sum + day.checked.reduce((s, id) => s + (drills.get(id) ?? 0), 0) + day.tests.reduce((s, t) => s + t.balls, 0), 0)
+  const ids = new Set([...day.checked, ...Object.keys(day.counts ?? {})])
+  let n = 0
+  for (const id of ids) {
+    const d = drills.get(id)
+    if (!d) continue
+    if (stepKind(d.qty) === 'balls' && day.counts?.[id] !== undefined) n += day.counts[id]
+    else if (day.checked.includes(id)) n += d.balls ?? 0
+  }
+  n += day.tests.reduce((s, t) => s + t.balls, 0)
+  n += Object.values(day.shots ?? {}).reduce((s, x) => s + x.length, 0)
+  return n
+}
+
+export function ballsOf(parts: Part[], days: Record<string, DayLog>): number {
+  return Object.values(days).reduce((sum, day) => sum + ballsOfDay(parts, day), 0)
+}
+
+// ---- 연습 모드 단계 ----
+
+export type StepKind = 'balls' | 'reps' | 'timer' | 'check'
+
+export type Step =
+  | { kind: StepKind; id: string; title: string; detail: string; tag?: string; target: number }
+  | { kind: 'test'; id: string; chapterId: string; title: string; detail: string; of: number; need: number; items?: string[] }
+
+export function stepKind(qty: string): StepKind {
+  if (/\d+\s*구/.test(qty)) return 'balls'
+  if (/\d+\s*회/.test(qty)) return 'reps'
+  if (/\d+\s*분/.test(qty)) return 'timer'
+  return 'check'
+}
+
+function stepFromItem(it: RoutineItem): Step {
+  if (it.kind === 'mental') return { kind: 'check', id: it.id, title: it.title, detail: it.detail, tag: '멘탈', target: 1 }
+  const k = stepKind(it.drill.qty)
+  const n = Number(it.drill.qty.match(/(\d+)/)?.[1] ?? 1)
+  return { kind: k, id: it.drill.id, title: it.drill.title, detail: it.drill.detail, tag: it.tag, target: k === 'timer' ? n * 60 : k === 'check' ? 1 : n }
+}
+
+export function testStep(ch: Chapter): Step {
+  const t = ch.test
+  return t.kind === 'count'
+    ? { kind: 'test', id: `test:${ch.id}`, chapterId: ch.id, title: `${ch.title} 통과 테스트`, detail: t.description, of: t.of, need: t.need }
+    : { kind: 'test', id: `test:${ch.id}`, chapterId: ch.id, title: `${ch.title} 통과 테스트`, detail: t.description, of: t.items.length, need: t.items.length, items: t.items }
+}
+
+// 오늘 연습의 단계 순서: 레슨 날은 드릴들 → 멘탈, 테스트 날은 복습 드릴 → 테스트 → 멘탈.
+export function stepsFor(parts: Part[], a: Assignment, mental: MentalCard): Step[] {
+  const items = routineFor(parts, a, mental).map(stepFromItem)
+  if (a.type !== 'test') return items
+  const ch = findChapter(parts, a.chapterId)
+  return ch ? [...items.slice(0, -1), testStep(ch), items[items.length - 1]] : items
+}
+
+export function stepDone(day: DayLog, step: Step): boolean {
+  return step.kind === 'test' ? day.tests.some((t) => t.chapterId === step.chapterId) : day.checked.includes(step.id)
+}
+
+export function stepProgress(day: DayLog, step: Step): number {
+  if (step.kind === 'test') return day.shots?.[step.chapterId]?.length ?? (stepDone(day, step) ? step.of : 0)
+  if (step.kind === 'check') return stepDone(day, step) ? 1 : 0
+  return day.counts?.[step.id] ?? (stepDone(day, step) ? step.target : 0)
+}
+
+// v2 저장 데이터(counts, shots 없음)를 v3 형태로 옮긴다. 형태가 다르면 null.
+export function migrateState(raw: unknown): AppState | null {
+  if (!raw || typeof raw !== 'object') return null
+  const s = raw as AppState
+  if (!s.days || typeof s.days !== 'object' || typeof s.today !== 'string') return null
+  const days: Record<string, DayLog> = {}
+  for (const [k, d] of Object.entries(s.days)) days[k] = { ...d, counts: d.counts ?? {}, shots: d.shots ?? {} }
+  return { ...s, days }
 }
 
 // 하루 전체의 연습 항목 (여러 레슨을 했어도 멘탈 드릴은 한 번만).

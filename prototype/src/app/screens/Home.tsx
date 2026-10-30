@@ -1,13 +1,13 @@
-import { useEffect, useRef } from 'react'
 import { PARTS } from '@/data/content'
 import { MENTAL_CARDS } from '@/data/mental'
 import { useStore } from '@/state/store'
 import {
-  chapterStatus, chaptersOf, currentChapter, estimateMinutes, extraAssignment, findLesson, isAssignmentDone,
-  itemId, lessonLabel, level, mentalCardFor, routineFor, streak, testBalls,
+  ballsOfDay, chapterStatus, chaptersOf, currentChapter, estimateMinutes, extraAssignment, findLesson, isAssignmentDone,
+  lessonLabel, level, mentalCardFor, stepDone, stepProgress, stepsFor, streak,
 } from '@/logic/progress'
 import { useNav } from '../nav'
-import { Button, LevelRing, Routine, SectionHead, Thumb } from '../ui'
+import { CaretRight, Check } from '@phosphor-icons/react'
+import { Button, LevelRing, SectionHead, Thumb, fmt } from '../ui'
 
 export function koreanDate(date: string) {
   const d = new Date(date + 'T00:00:00')
@@ -24,19 +24,12 @@ export function Home() {
   const cur = currentChapter(PARTS, s.passed)
   const ratio = cur ? cur.lessons.filter((l) => s.completedLessons.includes(l.id)).length / cur.lessons.length : 1
 
-  const items = active ? routineFor(PARTS, active, mental) : []
-  const doneCount = items.filter((it) => day.checked.includes(itemId(it))).length
+  const steps = active ? stepsFor(PARTS, active, mental) : []
+  const doneCount = steps.filter((st) => stepDone(day, st)).length
   const assignmentsDone = day.assignments.length > 0 && day.assignments.every((a) => isAssignmentDone(PARTS, day, a))
-  const routineDone = assignmentsDone && doneCount === items.length
+  const routineDone = assignmentsDone && doneCount === steps.length
   const failedToday = active?.type === 'test' && day.tests.some((t) => t.chapterId === active.chapterId) && !day.tests.some((t) => t.chapterId === active.chapterId && t.passed)
   const extra = assignmentsDone ? extraAssignment(PARTS, s, day) : null
-
-  // 오늘 연습을 막 끝낸 순간 한 번만 회고 화면을 띄운다
-  const prev = useRef(routineDone)
-  useEffect(() => {
-    if (routineDone && !prev.current && !day.reflection) nav.openReflect()
-    prev.current = routineDone
-  }, [routineDone, day.reflection, nav])
 
   if (!active || !cur) {
     return (
@@ -49,8 +42,10 @@ export function Home() {
 
   const label = lessonLabel(PARTS, active)!
   const lesson = active.type === 'lesson' ? findLesson(PARTS, active.lessonId)?.lesson : undefined
-  const balls = items.reduce((n, it) => n + (it.kind === 'drill' ? it.drill.balls ?? 0 : 0), 0) + testBalls(PARTS, active)
-  const open = () => nav.push(active.type === 'lesson' ? { name: 'lesson', lessonId: active.lessonId } : { name: 'test', chapterId: active.chapterId })
+  const planned = steps.reduce((n, st) => n + (st.kind === 'balls' ? st.target : st.kind === 'test' && !st.items ? st.of : 0), 0)
+  const hit = ballsOfDay(PARTS, day)
+  const started = steps.some((st) => stepProgress(day, st) > 0)
+  const cta = routineDone ? '오늘 연습 다시 보기' : started ? `이어서 하기 (${doneCount}/${steps.length})` : '연습 시작'
   const total = chaptersOf(PARTS).length
 
   return (
@@ -94,15 +89,44 @@ export function Home() {
         )}
         <dl className="flex gap-6">
           <Fact n={`약 ${estimateMinutes(PARTS, active)}`} u="예상 시간(분)" />
-          <Fact n={balls} u="칠 공" />
-          <Fact n={`${doneCount}/${items.length}`} u="끝낸 연습" />
+          <Fact n={started ? `${hit}/${planned}` : planned} u={started ? '친 공 / 칠 공' : '칠 공'} />
+          <Fact n={`${doneCount}/${steps.length}`} u="끝낸 연습" />
         </dl>
-        <Button onClick={open} className="w-full">{active.type === 'lesson' ? '영상 보고 시작' : '테스트 하러 가기'}</Button>
+        <Button onClick={() => nav.push({ name: 'session', start: routineDone ? steps.length : undefined })} className="w-full">{cta}</Button>
+        {lesson && active.type === 'lesson' && (
+          <button onClick={() => nav.push({ name: 'lesson', lessonId: active.lessonId })} className="-my-2 min-h-[44px] text-13 text-hero-sub underline underline-offset-4">
+            레슨 영상과 자세 포인트 먼저 보기
+          </button>
+        )}
       </section>
 
       <section>
-        <SectionHead title="오늘 연습" note="누르면 체크돼요" />
-        <Routine items={items} checked={day.checked} onToggle={(id) => dispatch({ type: 'toggle', id })} />
+        <SectionHead title="오늘 연습" note="누르면 그 단계부터" />
+        <ol className="mt-1 flex flex-col">
+          {steps.map((st, i) => {
+            const done = stepDone(day, st)
+            const n = stepProgress(day, st)
+            const amount = st.kind === 'test' ? (st.items ? `${st.of}항목` : `공 ${st.of}개`)
+              : st.kind === 'balls' ? `${n > 0 && !done ? `${n}/` : ''}공 ${st.target}개`
+                : st.kind === 'reps' ? `${n > 0 && !done ? `${n}/` : ''}${st.target}회`
+                  : st.kind === 'timer' ? fmt(st.target) : ''
+            return (
+              <li key={st.id}>
+                <button onClick={() => nav.push({ name: 'session', start: i })}
+                  className="grid min-h-[56px] w-full grid-cols-[24px_1fr_auto_16px] items-center gap-3 border-b py-3 text-left">
+                  <span className={`grid h-6 w-6 place-items-center rounded-full font-num text-12 ${done ? 'bg-forest text-surface' : 'ring-1 ring-inset ring-line text-sub'}`}>
+                    {done ? <Check size={12} weight="bold" aria-label="끝냄" /> : i + 1}
+                  </span>
+                  <span className={`min-w-0 text-15 ${done ? 'text-sub' : 'font-medium'}`}>
+                    {'tag' in st && st.tag && <span className="mr-2 text-12 font-bold text-gold-text">{st.tag}</span>}{st.title}
+                  </span>
+                  <span className="font-num text-13 text-sub tabular">{amount}</span>
+                  <CaretRight size={14} className="text-sub" aria-hidden="true" />
+                </button>
+              </li>
+            )
+          })}
+        </ol>
       </section>
 
       <section>

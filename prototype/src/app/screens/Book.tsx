@@ -1,11 +1,10 @@
 import { CaretLeft, CaretRight, LockSimple, Flag } from '@phosphor-icons/react'
 import { PARTS } from '@/data/content'
-import { MENTAL_CARDS } from '@/data/mental'
 import type { Chapter } from '@/data/types'
 import { useStore } from '@/state/store'
-import { chapterStatus, chaptersOf, findChapter, findLesson, isAssignmentDone, itemId, mentalCardFor, routineFor } from '@/logic/progress'
+import { chapterStatus, chaptersOf, findChapter, findLesson, isAssignmentDone, itemId } from '@/logic/progress'
 import { useNav } from '../nav'
-import { Routine, SectionHead, Thumb, VideoPlayer } from '../ui'
+import { Button, Routine, SectionHead, Thumb, VideoPlayer } from '../ui'
 
 export function BackBar({ label }: { label: string }) {
   const nav = useNav()
@@ -103,16 +102,15 @@ export function ChapterScreen({ chapterId }: { chapterId: string }) {
 }
 
 export function LessonScreen({ lessonId }: { lessonId: string }) {
-  const { s, dispatch } = useStore()
+  const { s } = useStore()
   const { lesson, chapter, index } = findLesson(PARTS, lessonId)!
   const day = s.days[s.today]
   const assignment = day.assignments.find((a) => a.type === 'lesson' && a.lessonId === lessonId)
-  // 오늘 레슨이면 홈과 같은 "오늘 연습" 목록(멘탈 포함)을, 아니면 드릴만 읽기 전용으로
-  const items = assignment
-    ? routineFor(PARTS, assignment, mentalCardFor(MENTAL_CARDS, s.startDate, s.today))
-    : lesson.drills.map((drill) => ({ kind: 'drill' as const, drill }))
+  // 드릴은 읽기 전용. 기록은 연습 모드에서만 한다 (같은 일을 하는 길은 하나)
+  const items = lesson.drills.map((drill) => ({ kind: 'drill' as const, drill }))
   const done = items.filter((it) => day.checked.includes(itemId(it))).length
   const completed = s.completedLessons.includes(lessonId)
+  const nav = useNav()
   return (
     <div className="anim-slide flex flex-col gap-6">
       <BackBar label={`${chapter.no}단원 ${chapter.title}`} />
@@ -134,10 +132,12 @@ export function LessonScreen({ lessonId }: { lessonId: string }) {
         </dl>
       </section>
       <section>
-        <SectionHead title={assignment ? '오늘 연습' : '연습 드릴'}
-          note={assignment ? `${done}/${items.length}` : completed ? '완료한 레슨이에요' : '이 레슨 차례가 되면 체크할 수 있어요'} />
-        <Routine items={items} checked={day.checked} onToggle={assignment ? (id) => dispatch({ type: 'toggle', id }) : undefined} />
-        {assignment && isAssignmentDone(PARTS, day, assignment) && <p className="mt-2 text-13 font-medium text-forest" role="status">이 레슨의 드릴을 모두 끝냈어요.</p>}
+        <SectionHead title="연습 드릴"
+          note={assignment ? `오늘 ${done}/${items.length} 끝냄` : completed ? '완료한 레슨이에요' : '이 레슨 차례가 되면 연습할 수 있어요'} />
+        <Routine items={items} checked={day.checked} />
+        {assignment && !isAssignmentDone(PARTS, day, assignment) && (
+          <Button onClick={() => nav.push({ name: 'session' })} className="mt-4 w-full">이 레슨으로 연습 시작</Button>
+        )}
       </section>
       <div className="rounded p-4 text-13 ring-1 ring-inset ring-line">
         <b className="mb-1 block text-14">{chapter.no}단원 통과 기준</b>{chapter.test.description}
