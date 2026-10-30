@@ -1,0 +1,303 @@
+<title>골프 바이블 시안 2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap">
+<style>
+/* Layout: 짧은 설명 + 폰 3대(홈 / 교본 레슨 / 기록)를 나란히, 좁으면 한 줄씩 쌓임
+   Radius rule: 카드 20px, 썸네일·영상 14px, 버튼·칩은 pill */
+:root{
+  --bg:#eff1ec; --surface:#fafbf8; --ink:#13201a; --muted:#5c6962; --line:#dde1d9;
+  --forest:#1d4532; --forest-soft:#e2eae4; --amber:#b97c12; --amber-ink:#1d1300;
+  --hero-bg:#163627; --hero-ink:#eef0e9; --hero-muted:#a9bbb0; --hero-line:#2c4c3c;
+  --frame:#0e1511; --turf-a:#2b5a3f; --turf-b:#326747; --sky:#c9d6cd;
+  --f-num:"Outfit","Noto Sans KR",system-ui,sans-serif;
+  --f-body:"Noto Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b110e; --surface:#131b17; --ink:#e9ece6; --muted:#92a097; --line:#232e28;
+  --forest:#8fc3a4; --forest-soft:#19281f; --amber:#e2a845; --amber-ink:#1d1300;
+  --hero-bg:#11281d; --hero-ink:#eef0e9; --hero-muted:#9bb0a3; --hero-line:#24402f;
+  --frame:#050806; --turf-a:#1f4430; --turf-b:#264f38; --sky:#6f8578; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0b110e; --surface:#131b17; --ink:#e9ece6; --muted:#92a097; --line:#232e28;
+  --forest:#8fc3a4; --forest-soft:#19281f; --amber:#e2a845; --amber-ink:#1d1300;
+  --hero-bg:#11281d; --hero-ink:#eef0e9; --hero-muted:#9bb0a3; --hero-line:#24402f;
+  --frame:#050806; --turf-a:#1f4430; --turf-b:#264f38; --sky:#6f8578; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+.intro{max-width:64ch}
+.intro h1{font-weight:300;font-size:32px;line-height:1.25;margin:0;letter-spacing:-.02em;text-wrap:balance}
+.intro h1 b{font-weight:700}
+.intro p{margin:10px 0 0;color:var(--muted)}
+.phones{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:28px;align-items:start}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.col h2{margin:0;font-size:15px;font-weight:500}
+.col h2 span{color:var(--muted);font-weight:400}
+.phone{background:var(--frame);border-radius:42px;padding:9px;max-width:370px;width:100%;margin:0 auto;box-shadow:0 30px 60px -30px rgb(20 40 30 / .45)}
+.screen{background:var(--bg);border-radius:34px;height:700px;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.scroll{flex:1;overflow-y:auto;padding:22px 18px 24px;display:flex;flex-direction:column;gap:18px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.view{display:flex;flex-direction:column;gap:18px;animation:in .45s var(--ease) both}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.nav{display:grid;grid-template-columns:repeat(4,1fr);padding:8px 10px 14px;background:var(--surface);border-top:1px solid var(--line)}
+.nav button{all:unset;cursor:pointer;text-align:center;padding:8px 0;font-size:12px;color:var(--muted);border-radius:999px;transition:background .3s var(--ease),color .3s}
+.nav button[aria-current="true"]{color:var(--ink);font-weight:700;background:var(--forest-soft)}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+/* home */
+.greet{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.greet small{display:block;color:var(--muted);font-size:12.5px}
+.greet strong{font-size:22px;font-weight:300;letter-spacing:-.02em;line-height:1.3}
+.greet strong b{font-weight:700}
+.ring{position:relative;width:62px;height:62px;flex:none}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .lvn{position:absolute;inset:0;display:grid;place-items:center;text-align:center;line-height:1}
+.ring .lvn b{font-family:var(--f-num);font-weight:600;font-size:19px}
+.ring .lvn small{display:block;font-size:9px;color:var(--muted);margin-top:2px;letter-spacing:.04em}
+.hero{background:var(--hero-bg);color:var(--hero-ink);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.hero .where{font-size:12px;color:var(--hero-muted)}
+.hero h3{margin:2px 0 0;font-size:21px;font-weight:500;line-height:1.35;letter-spacing:-.01em;text-wrap:balance}
+.hero .facts{display:flex;gap:18px}
+.hero .facts div{display:flex;flex-direction:column}
+.hero .facts b{font-family:var(--f-num);font-weight:400;font-size:22px;line-height:1.1}
+.hero .facts span{font-size:11px;color:var(--hero-muted)}
+.cta{all:unset;cursor:pointer;text-align:center;background:var(--amber);color:var(--amber-ink);font-weight:700;font-size:14.5px;padding:13px 18px;border-radius:999px;transition:transform .2s var(--ease)}
+.cta:active{transform:scale(.98)}
+.cta.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.hero .cta.ghost{color:var(--hero-ink);box-shadow:inset 0 0 0 1px var(--hero-line)}
+.row-cta{display:grid;grid-template-columns:1fr auto;gap:8px}
+.thumb{border-radius:14px;overflow:hidden;position:relative;aspect-ratio:16/9;max-width:100%;
+  background:
+    linear-gradient(180deg,var(--sky) 0 34%,transparent 34%),
+    repeating-linear-gradient(100deg,var(--turf-a) 0 26px,var(--turf-b) 26px 52px)}
+.thumb::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgb(8 18 12 / .55))}
+.play{position:absolute;z-index:1;left:50%;top:46%;translate:-50% -50%;width:52px;height:52px;border-radius:999px;background:rgb(250 251 248 / .92);display:grid;place-items:center;border:0;cursor:pointer;transition:transform .2s var(--ease)}
+.play:active{transform:scale(.94)}
+.play::before{content:"";margin-left:4px;border-style:solid;border-width:9px 0 9px 15px;border-color:transparent transparent transparent #13201a}
+.play.on::before{margin:0;width:14px;height:16px;border:0;background:linear-gradient(90deg,#13201a 0 5px,transparent 5px 9px,#13201a 9px 14px)}
+.dur{position:absolute;z-index:1;right:10px;bottom:9px;color:#f4f5f0;font-family:var(--f-num);font-size:12px}
+.section-h{display:flex;justify-content:space-between;align-items:baseline}
+.section-h h4{margin:0;font-size:15px;font-weight:700}
+.section-h span{font-size:12px;color:var(--muted)}
+.drills{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.chk{all:unset;cursor:pointer;display:grid;grid-template-columns:24px 1fr auto;gap:12px;align-items:start;padding:12px 2px;border-bottom:1px solid var(--line);width:100%;box-sizing:border-box}
+.drills li:last-child .chk{border-bottom:0}
+.box{width:22px;height:22px;border-radius:999px;box-shadow:inset 0 0 0 1.5px var(--muted);display:grid;place-items:center;transition:background .25s var(--ease),transform .25s var(--ease)}
+.chk[aria-pressed="true"] .box{background:var(--forest);box-shadow:none;transform:scale(1.05)}
+.chk[aria-pressed="true"] .box::after{content:"";width:9px;height:5px;border:2px solid var(--surface);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.chk[aria-pressed="true"] .dt b{color:var(--muted);text-decoration:line-through;font-weight:400}
+.dt b{font-weight:500;font-size:14.5px;display:block;line-height:1.45}
+.dt small{display:block;font-size:12px;color:var(--muted)}
+.qty{font-family:var(--f-num);font-size:13px;color:var(--muted);white-space:nowrap;padding-top:1px}
+.mtag{color:var(--amber);font-weight:700;font-size:11.5px;margin-right:6px}
+.journey{display:grid;grid-template-columns:repeat(12,1fr);gap:4px}
+.journey i{height:28px;border-radius:999px;background:var(--line)}
+.journey i.d{background:var(--forest)}
+.journey i.n{background:var(--amber)}
+.journey-l{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:6px}
+.quote{border-radius:20px;background:var(--forest-soft);padding:16px 18px}
+.quote b{display:block;font-size:15px;font-weight:500;line-height:1.5}
+.quote p{margin:6px 0 0;font-size:13px;color:var(--muted)}
+.done-msg{background:var(--amber);color:var(--amber-ink);border-radius:20px;padding:14px 16px;font-weight:700;animation:in .5s var(--ease) both}
+.done-msg small{display:block;font-weight:400;font-size:12.5px}
+
+/* book */
+.top-title{font-size:24px;font-weight:300;letter-spacing:-.02em;margin:0;line-height:1.3}
+.top-title b{font-weight:700}
+.part h5{margin:0 0 6px;font-size:12px;color:var(--muted);font-weight:500}
+.chs{display:flex;flex-direction:column;background:var(--surface);border-radius:20px;padding:4px 14px}
+.chrow{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.chs > :last-child{border-bottom:0}
+.chrow .no{font-family:var(--f-num);font-size:15px;color:var(--muted)}
+.chrow .nm{font-size:14.5px}
+.chrow.lock .nm,.chrow.lock .no{color:var(--muted);opacity:.6}
+.chrow .s{font-size:11.5px;color:var(--muted)}
+.chrow.now .s{color:var(--amber);font-weight:700}
+.chrow.now .no{color:var(--amber)}
+.lessons{display:flex;flex-direction:column;gap:10px;padding:0 0 12px;border-bottom:1px solid var(--line)}
+.lesson{all:unset;cursor:pointer;display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:center}
+.lesson .thumb{border-radius:10px}
+.lesson .thumb .dur{font-size:10.5px;right:6px;bottom:4px}
+.lesson b{display:block;font-size:13.5px;font-weight:500;line-height:1.4}
+.lesson small{font-size:11.5px;color:var(--muted)}
+.lesson.today b{color:var(--amber)}
+.back{all:unset;cursor:pointer;font-size:13px;color:var(--muted)}
+.player{display:flex;flex-direction:column;gap:10px}
+.scrub{position:relative;height:4px;border-radius:999px;background:var(--line);overflow:hidden}
+.scrub i{position:absolute;inset:0;background:var(--amber);transform-origin:left;transform:scaleX(var(--p,0));transition:transform .25s linear}
+.marks{display:flex;flex-direction:column}
+.mark{all:unset;cursor:pointer;display:grid;grid-template-columns:44px 1fr;gap:8px;padding:9px 0;font-size:13.5px;border-bottom:1px solid var(--line)}
+.marks > :last-child{border-bottom:0}
+.mark span{font-family:var(--f-num);color:var(--muted);font-size:13px}
+.mark.on{color:var(--amber);font-weight:500}
+.mark.on span{color:var(--amber)}
+.lt{margin:0;font-size:21px;font-weight:500;letter-spacing:-.01em;line-height:1.35}
+.goal{font-size:13.5px;color:var(--muted);margin:2px 0 0}
+.points{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pt{background:var(--surface);border-radius:14px;padding:12px}
+.pt b{font-family:var(--f-num);font-size:20px;font-weight:400;display:block;line-height:1.1}
+.pt span{font-size:12.5px;line-height:1.45;display:block;margin-top:4px}
+.passbox{border-radius:20px;box-shadow:inset 0 0 0 1px var(--line);padding:14px 16px;font-size:13px}
+.passbox b{display:block;font-size:13.5px;margin-bottom:2px}
+
+/* log */
+.stats{display:grid;grid-template-columns:1.3fr 1fr;gap:10px}
+.big{background:var(--hero-bg);color:var(--hero-ink);border-radius:20px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;min-height:150px}
+.big span{font-size:12px;color:var(--hero-muted)}
+.big b{font-family:var(--f-num);font-weight:300;font-size:56px;line-height:1}
+.big b small{font-size:18px;margin-left:2px}
+.mini{display:flex;flex-direction:column;gap:10px}
+.mini div{background:var(--surface);border-radius:20px;padding:12px 14px;flex:1}
+.mini b{font-family:var(--f-num);font-weight:400;font-size:24px;display:block;line-height:1.1}
+.mini span{font-size:11.5px;color:var(--muted)}
+.chart{background:var(--surface);border-radius:20px;padding:14px 14px 10px}
+.chart svg{width:100%;height:auto;display:block}
+.log{display:flex;flex-direction:column;background:var(--surface);border-radius:20px;padding:2px 14px}
+.log div{display:grid;grid-template-columns:48px 1fr auto;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.log > :last-child{border-bottom:0}
+.log .d,.log .r{font-family:var(--f-num);color:var(--muted);font-size:13px}
+.log .r.ok{color:var(--forest);font-weight:600}
+.reflect{font-size:13px;color:var(--muted);background:var(--surface);border-radius:20px;padding:14px 16px}
+.reflect b{color:var(--ink);display:block;font-size:13.5px;margin-bottom:4px}
+.note{font-size:12.5px;color:var(--muted);margin:0}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <h1>골프 바이블 <b>시안 2</b></h1>
+    <p>A안(오늘 레슨 먼저)을 기본으로 하고, B안의 장점인 "교본에서 내 위치"를 홈 중간에 넣었어요. 교본의 각 레슨은 영상이 맨 위에 오고, 영상 구간을 누르면 해당 장면으로 넘어가는 구조예요. 잔디 무늬 화면은 실제 영상이 들어갈 자리이고, 이름과 기록은 예시예요.</p>
+  </header>
+  <section class="phones">
+    <div class="col"><h2>홈 <span>연습장 도착하면 보는 화면</span></h2><div class="phone"><div class="screen" id="p1"></div></div></div>
+    <div class="col"><h2>교본 레슨 <span>영상 + 체크포인트 + 드릴</span></h2><div class="phone"><div class="screen" id="p2"></div></div></div>
+    <div class="col"><h2>기록 <span>성장 확인</span></h2><div class="phone"><div class="screen" id="p3"></div></div></div>
+  </section>
+</div>
+
+<script>
+const PARTS=[
+  {name:"기초",chs:[["그립","d"],["어드레스","d"],["정렬","d"]]},
+  {name:"스윙",chs:[["하프스윙","d"],["풀스윙","n"],["임팩트와 체중 이동","l"]]},
+  {name:"클럽별",chs:[["드라이버","l"],["어프로치","l"],["퍼팅","l"]]},
+  {name:"코스와 멘탈",chs:[["프리샷 루틴","l"],["멘탈 관리","l"],["코스 매니지먼트","l"]]}
+];
+const LESSONS=[
+  ["백스윙 톱 위치","3:48","d"],["다운스윙은 하체부터","4:20","d"],["피니시 3초 버티기","4:12","n"],["템포 3대 1 만들기","3:30","l"],["7번 아이언 통과 테스트","2:55","l"]
+];
+const MARKS=[["0:00","왜 피니시가 중요한가",0],["0:52","올바른 피니시 자세",52],["1:58","흔한 실수 세 가지",118],["3:05","드릴 시연",185]];
+const DUR=252;
+const DRILLS=[
+  {t:"워밍업 스트레칭",s:"어깨와 골반 회전 위주",q:"5분"},
+  {t:"빈 스윙, 피니시에서 3초 멈추기",s:"흔들리지 않고 서 있으면 성공",q:"10회"},
+  {t:"7번 아이언 하프스윙",s:"지난 단원 복습",q:"20구"},
+  {t:"풀스윙 후 피니시 3초",s:"오늘의 핵심 드릴",q:"30구"},
+  {t:"샷 전에 숨 한 번 내쉬기",s:"목표 보기, 숨 내쉬기, 스윙",q:"매 샷",m:1}
+];
+const POINTS=[["90%","체중이 왼발에 실려 있어요"],["발끝","오른발은 발끝만 땅에 닿아요"],["정면","벨트 버클이 목표를 향해요"],["3초","균형을 잃지 않고 버텨요"]];
+const LOG=[["10/29","피니시 3초 버티기","6/10"],["10/27","다운스윙은 하체부터","5/10"],["10/25","하프스윙 통과 테스트","7/10",1],["10/22","하프스윙 템포","6/10"]];
+const RATES=[3,4,4,5,6,7,5,6];
+const XP=240,NEXT=300;
+
+function ring(xp){
+  const r=26,c=2*Math.PI*r,p=Math.min(1,xp/NEXT);
+  return `<div class="ring" aria-label="레벨 3, 다음 레벨까지 ${NEXT-xp}XP"><svg viewBox="0 0 62 62"><circle cx="31" cy="31" r="${r}" fill="none" stroke="var(--line)" stroke-width="4"/><circle cx="31" cy="31" r="${r}" fill="none" stroke="var(--amber)" stroke-width="4" stroke-linecap="round" stroke-dasharray="${c*p} ${c}"/></svg><div class="lvn"><div><b>Lv.3</b><small>스윙</small></div></div></div>`;
+}
+function thumb(dur,big,st){
+  return `<div class="thumb">${big?`<button class="play ${st&&st.playing?"on":""}" data-act="play" aria-label="${st&&st.playing?"일시정지":"재생"}"></button>`:""}<span class="dur">${dur}</span></div>`;
+}
+function drillList(st){
+  return `<ul class="drills">${DRILLS.map((d,i)=>`<li><button class="chk" data-i="${i}" aria-pressed="${st.done.has(i)}"><span class="box"></span><span class="dt"><b>${d.m?`<span class="mtag">멘탈</span>`:""}${d.t}</b><small>${d.s}</small></span><span class="qty">${d.q}</span></button></li>`).join("")}</ul>`;
+}
+function xpNow(st){return XP+(st.done.size===DRILLS.length?30:0)}
+const V={
+  home(st){
+    const all=st.done.size===DRILLS.length;
+    return `<div class="greet"><div><small>10월 30일 목요일</small><strong>민준 님,<br><b>오늘은 피니시</b>예요</strong></div>${ring(xpNow(st))}</div>
+    ${all?`<div class="done-msg">오늘 루틴 완료, 30XP 획득<small>6일 연속 연습 중이에요</small></div>`:""}
+    <div class="hero">
+      <div><div class="where">풀스윙 단원, 세 번째 레슨</div><h3>피니시 3초 버티기</h3></div>
+      ${thumb("4:12",false)}
+      <div class="facts"><div><b>50</b><span>분</span></div><div><b>50</b><span>공 개수</span></div><div><b>${st.done.size}/${DRILLS.length}</b><span>드릴 완료</span></div></div>
+      <div class="row-cta"><button class="cta" data-act="lesson">영상 보고 시작</button><button class="cta ghost" data-tab="book">교본</button></div>
+    </div>
+    <div><div class="section-h"><h4>오늘의 드릴</h4><span>누르면 체크돼요</span></div>${drillList(st)}</div>
+    <div><div class="section-h"><h4>교본에서 내 위치</h4><span>12단원 중 5단원</span></div>
+      <div class="journey" style="margin-top:10px">${Array.from({length:12},(_,i)=>`<i class="${i<4?"d":i===4?"n":""}"></i>`).join("")}</div>
+      <div class="journey-l"><span>그립</span><span>코스 매니지먼트</span></div></div>
+    <div class="quote"><b>"미스샷은 한 줄만 적고 잊는다."</b><p>오늘의 멘탈 카드. 나쁜 샷이 나오면 원인을 한 줄로만 적고, 다음 공 앞에서는 숨부터 다시 내쉬어요.</p></div>`;
+  },
+  book(st){
+    if(st.lesson) return V.lesson(st);
+    let no=0;
+    return `<h3 class="top-title">골프 바이블<br><b>12단원</b></h3>
+    <p class="note">단원마다 영상 레슨 4~6개와 통과 테스트가 있어요. 테스트를 통과하면 다음 단원이 열려요.</p>
+    ${PARTS.map(p=>`<div class="part"><h5>${p.name}</h5><div class="chs">${p.chs.map(([nm,s])=>{no++;
+      const row=`<div class="chrow ${s==="n"?"now":s==="l"?"lock":""}"><span class="no">${String(no).padStart(2,"0")}</span><span class="nm">${nm}</span><span class="s">${s==="d"?"완료":s==="n"?"진행 중":"잠김"}</span></div>`;
+      return s==="n"?row+`<div class="lessons">${LESSONS.map(([t,d,ls],i)=>`<button class="lesson ${ls==="n"?"today":""}" data-act="lesson">${thumb(d,false)}<span><b>${t}</b><small>${ls==="d"?"봤어요":ls==="n"?"오늘 레슨":i===4?"통과 테스트":"다음 레슨"}</small></span></button>`).join("")}</div>`:row;}).join("")}</div></div>`).join("")}`;
+  },
+  lesson(st){
+    const cur=MARKS.reduce((a,m,i)=>st.t>=m[2]?i:a,0);
+    return `<button class="back" data-act="back">← 풀스윙 단원</button>
+    <div class="player">${thumb("4:12",true,st)}<div class="scrub"><i style="--p:${st.t/DUR}"></i></div></div>
+    <div><p class="goal">풀스윙 단원, 레슨 3/5</p><h3 class="lt">피니시 3초 버티기</h3><p class="goal">끝까지 균형을 잡아야 스윙 궤도가 일정해져요.</p></div>
+    <div><div class="section-h"><h4>영상 구간</h4><span>누르면 그 장면으로 이동</span></div>
+      <div class="marks">${MARKS.map(([tm,nm,s],i)=>`<button class="mark ${i===cur&&(st.t>0)?"on":""}" data-seek="${s}"><span>${tm}</span>${nm}</button>`).join("")}</div></div>
+    <div><div class="section-h"><h4>자세 체크포인트</h4><span>거울이나 영상으로 확인</span></div>
+      <div class="points" style="margin-top:10px">${POINTS.map(([b,s])=>`<div class="pt"><b>${b}</b><span>${s}</span></div>`).join("")}</div></div>
+    <div><div class="section-h"><h4>연습 드릴</h4><span>${st.done.size}/${DRILLS.length}</span></div>${drillList(st)}</div>
+    <div class="passbox"><b>단원 통과 기준</b>7번 아이언 10개 중 7개가 목표 방향 ±10m 안에 떨어지면 다음 단원(임팩트와 체중 이동)이 열려요.</div>`;
+  },
+  log(st){
+    const w=300,h=130,pl=22,pb=22,bw=(w-pl-6)/RATES.length,y=v=>h-pb-(v/10)*(h-pb-12);
+    let g=[0,5,10].map(v=>`<text x="${pl-6}" y="${y(v)+4}" font-size="9" text-anchor="end" fill="var(--muted)">${v}</text>`).join("");
+    g+=`<line x1="${pl}" x2="${w-2}" y1="${y(7)}" y2="${y(7)}" stroke="var(--amber)" stroke-dasharray="3 4" stroke-width="1.2"/><text x="${w-2}" y="${y(7)-5}" font-size="9" text-anchor="end" fill="var(--amber)">통과선 7/10</text>`;
+    RATES.forEach((v,i)=>{const x=pl+5+i*bw;g+=`<rect x="${x}" y="${y(v)}" width="${bw-10}" height="${h-pb-y(v)}" rx="${(bw-10)/2}" fill="${i===RATES.length-1?"var(--forest)":"var(--line)"}"/>`;});
+    g+=`<text x="${pl+5}" y="${h-6}" font-size="9" fill="var(--muted)">8회 전</text><text x="${w-2}" y="${h-6}" font-size="9" text-anchor="end" fill="var(--muted)">지난 연습</text>`;
+    return `<h3 class="top-title">성장 <b>기록</b></h3>
+    <div class="stats"><div class="big"><span>연속 연습</span><b>${st.done.size===DRILLS.length?6:5}<small>일</small></b></div>
+      <div class="mini"><div><b>4/12</b><span>통과한 단원</span></div><div><b>1,240</b><span>누적 공</span></div></div></div>
+    <div class="chart"><div class="section-h" style="margin-bottom:6px"><h4>10개 중 목표 방향</h4><span>최근 8회</span></div><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="최근 8회 연습에서 10개 중 목표 방향으로 간 공 개수">${g}</svg></div>
+    <div><div class="section-h" style="margin-bottom:8px"><h4>연습 일지</h4><span>방향 성공</span></div>
+      <div class="log">${LOG.map(([d,t,r,ok])=>`<div><span class="d">${d}</span><span>${t}</span><span class="r ${ok?"ok":""}">${r}</span></div>`).join("")}</div></div>
+    <div class="reflect"><b>지난 연습 회고</b>잘된 것: 피니시에서 2초는 버텼다. 다음에 고칠 것: 오른발 뒤꿈치가 덜 들린다.</div>`;
+  },
+  mind(st){
+    return `<h3 class="top-title">멘탈 <b>노트</b></h3>
+    <div class="quote"><b>"미스샷은 한 줄만 적고 잊는다."</b><p>원인을 한 줄로만 적고, 다음 공 앞에서는 숨부터 다시 내쉬어요.</p></div>
+    <div class="quote"><b>프리샷 루틴 세 단계</b><p>공 뒤에서 목표 보기, 숨 내쉬며 어드레스, 3초 안에 스윙.</p></div>
+    <div class="quote"><b>연습 끝나고 30초 회고</b><p>잘된 것 하나, 다음에 고칠 것 하나만 적어요. 기록 탭에 쌓여요.</p></div>
+    <p class="note">멘탈은 11단원에서 따로 배우고, 매일 루틴에도 멘탈 드릴이 하나씩 들어가요.</p>`;
+  }
+};
+const TABS=[["home","홈"],["book","교본"],["log","기록"],["mind","멘탈"]];
+function mount(id,tab,lesson){
+  const root=document.getElementById(id),st={tab,lesson:!!lesson,done:new Set([0,1]),playing:false,t:0,timer:null};
+  function render(keep){
+    const top=keep?root.querySelector(".scroll")?.scrollTop||0:0;
+    root.innerHTML=`<div class="scroll"><div class="view"${keep?' style="animation:none"':""}>${V[st.tab](st)}</div></div><nav class="nav">${TABS.map(([k,l])=>`<button data-tab="${k}" aria-current="${st.tab===k}">${l}</button>`).join("")}</nav>`;
+    root.querySelector(".scroll").scrollTop=top;
+  }
+  function stop(){clearInterval(st.timer);st.timer=null;st.playing=false}
+  root.addEventListener("click",e=>{
+    const b=e.target.closest("button");if(!b)return;
+    if(b.dataset.i!==undefined){const i=+b.dataset.i;st.done.has(i)?st.done.delete(i):st.done.add(i);render(true);return}
+    if(b.dataset.tab){stop();st.tab=b.dataset.tab;st.lesson=false;render();return}
+    if(b.dataset.seek!==undefined){st.t=+b.dataset.seek;render(true);return}
+    const a=b.dataset.act;
+    if(a==="lesson"){stop();st.tab="book";st.lesson=true;render()}
+    else if(a==="back"){stop();st.lesson=false;render()}
+    else if(a==="play"){
+      if(st.playing){stop();render(true);return}
+      st.playing=true;
+      st.timer=setInterval(()=>{st.t=Math.min(DUR,st.t+4);if(st.t>=DUR)stop();render(true)},250);
+      render(true);
+    }
+  });
+  render();
+}
+mount("p1","home");mount("p2","book",true);mount("p3","log");
+</script>
