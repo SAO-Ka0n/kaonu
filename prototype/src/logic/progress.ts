@@ -4,7 +4,8 @@ import type { Chapter, Drill, Lesson, MentalCard, Part } from '@/data/types'
 export type Assignment = { type: 'lesson'; lessonId: string } | { type: 'test'; chapterId: string }
 
 // need: 그 단원의 통과 기준, balls: 테스트에서 친 공 (체크리스트 테스트는 0)
-export type TestResult = { chapterId: string; score: number; of: number; need: number; passed: boolean; balls: number }
+// unlocked: 이 결과로 다음 단원이 처음 열렸는지 (재통과는 false)
+export type TestResult = { chapterId: string; score: number; of: number; need: number; passed: boolean; balls: number; unlocked?: boolean }
 
 export type DayLog = {
   date: string // YYYY-MM-DD, 폰 현지 날짜
@@ -155,8 +156,8 @@ export function ballsOfDay(parts: Part[], day: DayLog): number {
   for (const id of ids) {
     const d = drills.get(id)
     if (!d) continue
-    if (stepKind(d.qty) === 'balls' && day.counts?.[id] !== undefined) n += day.counts[id]
-    else if (day.checked.includes(id)) n += d.balls ?? 0
+    if (stepKind(d.qty) !== 'balls') continue // 공 단계만 센다 (칠 공 계획과 같은 기준)
+    n += day.counts?.[id] ?? (day.checked.includes(id) ? d.balls ?? 0 : 0)
   }
   n += day.tests.reduce((s, t) => s + t.balls, 0)
   n += Object.values(day.shots ?? {}).reduce((s, x) => s + x.length, 0)
@@ -202,6 +203,22 @@ export function stepsFor(parts: Part[], a: Assignment, mental: MentalCard): Step
   if (a.type !== 'test') return items
   const ch = findChapter(parts, a.chapterId)
   return ch ? [...items.slice(0, -1), testStep(ch), items[items.length - 1]] : items
+}
+
+// 하루 전체 단계 (여러 레슨을 했어도 같은 단계는 한 번만). 기록 탭이 홈과 같은 기준으로 센다.
+export function daySteps(parts: Part[], day: DayLog, mental: MentalCard): Step[] {
+  const seen = new Set<string>()
+  return day.assignments.flatMap((a) => stepsFor(parts, a, mental)).filter((st) => !seen.has(st.id) && !!seen.add(st.id))
+}
+
+// 지금 단계들에서 친 공 / 칠 공 (홈 카드용: 오늘 전체가 아니라 지금 레슨 범위)
+export function ballsOfSteps(day: DayLog, steps: Step[]): { hit: number; planned: number } {
+  let hit = 0, planned = 0
+  for (const st of steps) {
+    if (st.kind === 'balls') { hit += stepProgress(day, st); planned += st.target }
+    if (st.kind === 'test' && !st.items) { hit += stepProgress(day, st); planned += st.of }
+  }
+  return { hit, planned }
 }
 
 export function stepDone(day: DayLog, step: Step): boolean {

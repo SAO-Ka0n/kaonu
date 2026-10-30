@@ -54,7 +54,8 @@ export function demoState(): AppState {
 type Action =
   | { type: 'check'; id: string; on: boolean }
   | { type: 'count'; id: string; delta: number; target: number }
-  | { type: 'shot'; chapterId: string; ok: boolean; of: number; need: number }
+  | { type: 'shot'; chapterId: string; ok: boolean; of: number }
+  | { type: 'saveShots'; chapterId: string; need: number }
   | { type: 'undoShot'; chapterId: string }
   | { type: 'extra' }
   | { type: 'test'; result: TestResult }
@@ -67,9 +68,16 @@ function reducer(s: AppState, a: Action): AppState {
   const day = s.days[s.today]
   const setDay = (p: Partial<DayLog>): AppState => ({ ...s, days: { ...s.days, [s.today]: { ...day, ...p } } })
   // 체크 상태가 바뀐 날을 저장하고, 드릴을 모두 끝낸 레슨을 완료 목록에 더한다
+  // 취소로 드릴이 다시 안 끝난 상태가 되면, 다른 날에 끝낸 기록이 없는 한 레슨 완료도 되돌린다
   const withDay = (next: DayLog): AppState => {
-    const done = next.assignments.flatMap((x) => (x.type === 'lesson' && isAssignmentDone(PARTS, next, x) ? [x.lessonId] : []))
-    return { ...s, completedLessons: [...new Set([...s.completedLessons, ...done])], days: { ...s.days, [s.today]: next } }
+    const days = { ...s.days, [s.today]: next }
+    const completed = new Set(s.completedLessons)
+    for (const x of next.assignments) {
+      if (x.type !== 'lesson') continue
+      if (isAssignmentDone(PARTS, next, x)) completed.add(x.lessonId)
+      else if (!Object.values(days).some((d) => isAssignmentDone(PARTS, d, x))) completed.delete(x.lessonId)
+    }
+    return { ...s, completedLessons: [...completed], days }
   }
   const setChecked = (d: DayLog, id: string, on: boolean): DayLog =>
     ({ ...d, checked: on ? [...new Set([...d.checked, id])] : d.checked.filter((x) => x !== id) })
@@ -81,15 +89,21 @@ function reducer(s: AppState, a: Action): AppState {
       return withDay(setChecked({ ...day, counts: { ...day.counts, [a.id]: n } }, a.id, n >= a.target))
     }
     case 'shot': {
-      const shots = [...(day.shots[a.chapterId] ?? []), a.ok]
-      if (shots.length < a.of) return setDay({ shots: { ...day.shots, [a.chapterId]: shots } })
-      // 마지막 공: 결과를 자동으로 기록하고 진행 중 기록을 비운다
+      const prev = day.shots[a.chapterId] ?? []
+      if (prev.length >= a.of) return s
+      return setDay({ shots: { ...day.shots, [a.chapterId]: [...prev, a.ok] } })
+    }
+    case 'saveShots': {
+      // 공을 다 친 뒤 사용자가 확인하고 저장할 때만 결과를 남긴다 (마지막 공도 취소할 수 있게)
+      const shots = day.shots[a.chapterId] ?? []
       const score = shots.filter(Boolean).length
-      const r: TestResult = { chapterId: a.chapterId, score, of: a.of, need: a.need, passed: score >= a.need, balls: a.of }
+      const passed = score >= a.need
+      const unlocked = passed && !s.passed.includes(a.chapterId)
+      const r: TestResult = { chapterId: a.chapterId, score, of: shots.length, need: a.need, passed, balls: shots.length, unlocked }
       const { [a.chapterId]: _, ...rest } = day.shots
       void _
       const s2 = setDay({ shots: rest, tests: [...day.tests, r] })
-      return r.passed && !s.passed.includes(r.chapterId) ? { ...s2, passed: [...s.passed, r.chapterId] } : s2
+      return unlocked ? { ...s2, passed: [...s.passed, a.chapterId] } : s2
     }
     case 'undoShot':
       return setDay({ shots: { ...day.shots, [a.chapterId]: (day.shots[a.chapterId] ?? []).slice(0, -1) } })
@@ -98,7 +112,7 @@ function reducer(s: AppState, a: Action): AppState {
       return next ? setDay({ assignments: [...day.assignments, next] }) : s
     }
     case 'test': {
-      const r = a.result
+      const r = { ...a.result, unlocked: a.result.passed && !s.passed.includes(a.result.chapterId) }
       const s2 = setDay({ tests: [...day.tests, r] })
       return r.passed && !s.passed.includes(r.chapterId) ? { ...s2, passed: [...s.passed, r.chapterId] } : s2
     }

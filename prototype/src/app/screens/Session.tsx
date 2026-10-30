@@ -123,7 +123,6 @@ function Control({ step }: { step: Step }) {
       <button onClick={() => dispatch({ type: 'count', id: step.id, delta: 1, target: step.target })} disabled={n >= step.target}
         className="flex min-h-[176px] flex-col items-center justify-center rounded bg-gold text-gold-ink transition-transform active:scale-[0.98] disabled:bg-forest disabled:text-surface">
         <span className="text-24 font-bold">{n >= step.target ? '다 했어요' : step.kind === 'balls' ? '한 개 쳤어요' : '1회 했어요'}</span>
-        {n < step.target && <span className="font-num text-17">+1</span>}
       </button>
       <div className="grid grid-cols-2 gap-2">
         <Button variant="ghost" disabled={n === 0} onClick={() => dispatch({ type: 'count', id: step.id, delta: -1, target: step.target })}>
@@ -162,14 +161,18 @@ function TestControl({ step }: { step: Extract<Step, { kind: 'test' }> }) {
   const shots = day.shots[step.chapterId] ?? []
   const result = [...day.tests].reverse().find((t) => t.chapterId === step.chapterId)
   const [ticks, setTicks] = useState<number[]>([])
-  if (result && shots.length === 0) {
+  const [confirmEmpty, setConfirmEmpty] = useState(false)
+  const [retry, setRetry] = useState(false)
+  if (result && shots.length === 0 && !retry) {
     return (
       <div className={`rounded p-5 ${result.passed ? 'bg-hero text-hero-ink' : 'bg-surface'}`} role="status">
         <p className="font-num text-56 font-light tabular">{result.score}<small className="text-20">/{result.of}</small></p>
         <p className="mt-2 text-20 font-medium">{result.passed ? '통과했어요' : `통과 기준은 ${result.need}개예요`}</p>
         <p className={`mt-1 text-14 ${result.passed ? 'text-hero-sub' : 'text-sub'}`}>
-          {result.passed ? '다음 단원이 열렸어요.' : '결과를 기록에 남겼어요. 다시 도전은 횟수 제한 없이 할 수 있어요.'}
+          {!result.passed ? '결과를 기록에 남겼어요. 다시 도전은 횟수 제한 없이 할 수 있어요.'
+            : result.unlocked ? '다음 단원이 열렸어요.' : '이미 통과한 단원이라 기록만 남겼어요.'}
         </p>
+        <button onClick={() => { setRetry(true); setTicks([]) }} className={`mt-4 min-h-[44px] rounded-full px-4 text-14 font-bold ring-1 ring-inset ${result.passed ? 'ring-hero-line' : 'ring-line'}`}>다시 도전</button>
       </div>
     )
   }
@@ -189,11 +192,17 @@ function TestControl({ step }: { step: Extract<Step, { kind: 'test' }> }) {
             )
           })}
         </ul>
-        <Button onClick={() => dispatch({ type: 'test', result: { chapterId: step.chapterId, score: ticks.length, of: step.of, need: step.need, passed: ticks.length >= step.need, balls: 0 } })}>결과 저장</Button>
+        {confirmEmpty && ticks.length === 0 && <p className="text-14" role="status">아무 항목도 체크하지 않았어요. 이대로 저장할까요?</p>}
+        <Button onClick={() => {
+          if (ticks.length === 0 && !confirmEmpty) { setConfirmEmpty(true); return }
+          dispatch({ type: 'test', result: { chapterId: step.chapterId, score: ticks.length, of: step.of, need: step.need, passed: ticks.length >= step.need, balls: 0 } })
+          setRetry(false)
+        }}>{confirmEmpty && ticks.length === 0 ? '이대로 저장' : '결과 저장'}</Button>
       </>
     )
   }
   const ok = shots.filter(Boolean).length
+  const full = shots.length >= step.of
   return (
     <>
       <div className="flex flex-col items-center gap-2">
@@ -203,12 +212,20 @@ function TestControl({ step }: { step: Extract<Step, { kind: 'test' }> }) {
           {Array.from({ length: step.of }, (_, i) => <i key={i} className={`h-3 w-3 rounded-full ${i >= shots.length ? 'ring-1 ring-inset ring-line' : shots[i] ? 'bg-forest' : 'bg-sub'}`} />)}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <button onClick={() => dispatch({ type: 'shot', chapterId: step.chapterId, ok: true, of: step.of, need: step.need })}
-          className="min-h-[160px] rounded bg-forest text-24 font-bold text-surface active:scale-[0.98]">성공</button>
-        <button onClick={() => dispatch({ type: 'shot', chapterId: step.chapterId, ok: false, of: step.of, need: step.need })}
-          className="min-h-[160px] rounded bg-surface text-24 font-bold ring-1 ring-inset ring-line active:scale-[0.98]">실패</button>
-      </div>
+      {full ? (
+        <button onClick={() => { dispatch({ type: 'saveShots', chapterId: step.chapterId, need: step.need }); setRetry(false) }}
+          className="min-h-[160px] rounded bg-gold text-gold-ink active:scale-[0.98]">
+          <span className="block text-24 font-bold">결과 저장</span>
+          <span className="block text-15">{step.of}개 중 {ok}개 성공, {ok >= step.need ? '통과' : '미통과'}</span>
+        </button>
+      ) : (
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={() => dispatch({ type: 'shot', chapterId: step.chapterId, ok: true, of: step.of })}
+            className="min-h-[160px] rounded bg-forest text-24 font-bold text-surface active:scale-[0.98]">성공</button>
+          <button onClick={() => dispatch({ type: 'shot', chapterId: step.chapterId, ok: false, of: step.of })}
+            className="min-h-[160px] rounded bg-surface text-24 font-bold ring-1 ring-inset ring-line active:scale-[0.98]">실패</button>
+        </div>
+      )}
       <Button variant="ghost" disabled={shots.length === 0} onClick={() => dispatch({ type: 'undoShot', chapterId: step.chapterId })}>
         <span className="inline-flex items-center gap-1"><ArrowCounterClockwise size={16} aria-hidden="true" />마지막 공 취소</span>
       </Button>
@@ -230,8 +247,8 @@ function Summary({ steps, doneCount, balls, onBack, titleRef }: { steps: Step[];
   }
   return (
     <div className="anim-rise flex flex-col gap-5">
-      <h1 ref={titleRef} tabIndex={-1} data-screen-title className="text-24 font-light tracking-tight">
-        {all ? <>오늘 연습<br /><b className="font-bold">끝났어요</b></> : <>연습 {steps.length}개 중<br /><b className="font-bold">{doneCount}개 끝냈어요</b></>}
+      <h1 ref={titleRef} tabIndex={-1} data-screen-title className="text-24 font-bold tracking-tight">
+        {all ? '오늘 연습 끝났어요' : `연습 ${steps.length}개 중 ${doneCount}개 끝냈어요`}
       </h1>
       <dl className="grid grid-cols-2 gap-3">
         <div className="flex flex-col-reverse rounded bg-hero p-4 text-hero-ink"><dt className="text-12 text-hero-sub">오늘 친 공</dt><dd className="font-num text-32 tabular">{balls}</dd></div>

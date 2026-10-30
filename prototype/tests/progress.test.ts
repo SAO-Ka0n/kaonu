@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { PARTS } from '../src/data/content.ts'
 import { MENTAL_CARDS } from '../src/data/mental.ts'
-import { ballsOfDay, migrateState, stepKind, stepsFor, stepProgress, type DayLog } from '../src/logic/progress.ts'
+import { ballsOfDay, ballsOfSteps, daySteps, migrateState, stepKind, stepsFor, stepProgress, type DayLog } from '../src/logic/progress.ts'
 
 const mental = MENTAL_CARDS[0]
 const c5 = PARTS[1].chapters[1]
@@ -55,4 +55,24 @@ test('v2 데이터 이전: counts와 shots를 채우고 나머지는 그대로',
   assert.deepEqual(s.days['2026-10-30'].checked, ['x'])
   assert.equal(migrateState({ nope: 1 }), null)
   assert.equal(migrateState(null), null)
+})
+
+test('홈 카드의 친 공/칠 공은 지금 단계 범위만 센다', () => {
+  const l3 = c5.lessons[2], l4 = c5.lessons[3]
+  const b3 = l3.drills.find((d) => stepKind(d.qty) === 'balls')!
+  const d = day({ assignments: [{ type: 'lesson', lessonId: l3.id }, { type: 'lesson', lessonId: l4.id }], counts: { [b3.id]: b3.balls! } })
+  const steps4 = stepsFor(PARTS, { type: 'lesson', lessonId: l4.id }, mental)
+  assert.equal(ballsOfSteps(d, steps4).hit, 0)
+  assert.ok(ballsOfDay(PARTS, d) >= b3.balls!)
+})
+
+test('하루 단계는 여러 레슨이어도 멘탈을 한 번만 센다', () => {
+  const d = day({ assignments: [{ type: 'lesson', lessonId: c5.lessons[2].id }, { type: 'lesson', lessonId: c5.lessons[3].id }] })
+  const all = daySteps(PARTS, d, mental)
+  assert.equal(all.filter((x) => x.id.startsWith('mental:')).length, 1)
+})
+
+test('시간 드릴의 공은 친 공에 더하지 않는다 (칠 공 계획과 같은 기준)', () => {
+  const timed = PARTS.flatMap((p) => p.chapters.flatMap((c) => c.lessons.flatMap((l) => l.drills))).find((x) => stepKind(x.qty) === 'timer' && x.balls)!
+  assert.equal(ballsOfDay(PARTS, day({ checked: [timed.id] })), 0)
 })

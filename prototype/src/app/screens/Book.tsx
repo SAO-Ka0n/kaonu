@@ -22,7 +22,7 @@ export function Book() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 data-screen-title tabIndex={-1} className="text-24 font-light tracking-tight">골프 바이블<br /><b className="font-bold">{total}단원</b></h1>
+        <h1 data-screen-title tabIndex={-1} className="text-24 font-bold tracking-tight">골프 바이블 {total}단원</h1>
         <p className="mt-2 text-13 text-sub">단원마다 영상 레슨과 통과 테스트가 있어요. 테스트를 통과하면 다음 단원이 열려요.</p>
       </div>
       {PARTS.map((p) => (
@@ -33,7 +33,7 @@ export function Book() {
               const st = chapterStatus(PARTS, s.passed, c.id)
               const inner = (
                 <>
-                  <span className={`font-num text-15 tabular ${st === 'now' ? 'text-gold-text' : 'text-sub'}`}>{String(c.no).padStart(2, '0')}</span>
+                  <span className={`font-num text-15 tabular ${st === 'now' ? 'text-gold-text' : 'text-sub'}`}>{c.no}</span>
                   <span className={`text-15 ${st === 'locked' ? 'text-sub' : ''}`}>{c.title}</span>
                   <span className={`flex items-center gap-1 text-12 ${st === 'now' ? 'font-bold text-gold-text' : 'text-sub'}`}>
                     {st === 'done' ? <>통과<CaretRight size={12} aria-hidden="true" /></> : st === 'now' ? '진행 중' : <><LockSimple size={12} aria-hidden="true" />잠김</>}

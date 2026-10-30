@@ -108,22 +108,6 @@ export function Routine({ items, checked, onToggle }: { items: RoutineItem[]; ch
   )
 }
 
-export function LevelRing({ n, name, ratio }: { n: number; name: string; ratio: number }) {
-  const r = 27, c = 2 * Math.PI * r
-  return (
-    <div className="relative h-16 w-16 flex-none" role="img" aria-label={`레벨 ${n}, ${name} 단계, 지금 단원 진행 ${Math.round(ratio * 100)}%`}>
-      <svg viewBox="0 0 64 64" className="h-full w-full -rotate-90" aria-hidden="true">
-        <circle cx="32" cy="32" r={r} fill="none" stroke="var(--line)" strokeWidth="4" />
-        <circle cx="32" cy="32" r={r} fill="none" stroke="var(--amber)" strokeWidth="4" strokeLinecap="round"
-          strokeDasharray={`${c * ratio} ${c}`} className="transition-[stroke-dasharray] duration-700" />
-      </svg>
-      <div className="absolute inset-0 grid place-items-center text-center leading-none" aria-hidden="true">
-        <div><small className="block text-12 text-sub">레벨</small><b className="font-num text-20 font-semibold leading-none">{n}</b></div>
-      </div>
-    </div>
-  )
-}
-
 export function SectionHead({ title, note }: { title: string; note?: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-2">

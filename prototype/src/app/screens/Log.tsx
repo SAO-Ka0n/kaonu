@@ -1,7 +1,7 @@
 import { PARTS } from '@/data/content'
 import { MENTAL_CARDS } from '@/data/mental'
 import { useStore } from '@/state/store'
-import { ballsOf, chaptersOf, dayItems, findChapter, isActiveDay, itemId, lessonLabel, mentalCardFor, metMentalCards, streak, testHistory } from '@/logic/progress'
+import { ballsOf, chaptersOf, daySteps, findChapter, isActiveDay, lessonLabel, mentalCardFor, metMentalCards, stepDone, streak, testHistory } from '@/logic/progress'
 import { SectionHead } from '../ui'
 
 export function Log() {
@@ -10,16 +10,11 @@ export function Log() {
   const days = Object.values(s.days).filter(isActiveDay).sort((a, b) => b.date.localeCompare(a.date))
   return (
     <div className="flex flex-col gap-6">
-      <h1 data-screen-title tabIndex={-1} className="text-24 font-light tracking-tight">성장 <b className="font-bold">기록</b></h1>
-      <dl className="grid grid-cols-[1.3fr_1fr] gap-3">
-        <div className="flex min-h-[152px] flex-col-reverse justify-between rounded bg-hero p-4 text-hero-ink">
-          <dd className="font-num text-56 font-light tabular">{streak(s.days, s.today)}<small className="ml-1 text-17">일</small></dd>
-          <dt className="text-12 text-hero-sub">연속 연습</dt>
-        </div>
-        <div className="flex flex-col gap-3">
-          <Mini n={`${s.passed.length}/${chaptersOf(PARTS).length}`} u="통과한 단원" />
-          <Mini n={ballsOf(PARTS, s.days).toLocaleString('ko-KR')} u="지금까지 친 공" />
-        </div>
+      <h1 data-screen-title tabIndex={-1} className="text-24 font-bold tracking-tight">성장 기록</h1>
+      <dl className="grid grid-cols-3 gap-3 rounded bg-surface p-4">
+        <Mini n={`${streak(s.days, s.today)}일`} u="연속 연습" />
+        <Mini n={`${s.passed.length}/${chaptersOf(PARTS).length}`} u="통과한 단원" />
+        <Mini n={ballsOf(PARTS, s.days).toLocaleString('ko-KR')} u="지금까지 친 공" />
       </dl>
 
       <section className="rounded bg-surface p-4 pb-3">
@@ -34,8 +29,8 @@ export function Log() {
             {days.slice(0, 10).map((d) => {
               const titles = d.assignments.map((a) => lessonLabel(PARTS, a)?.title).filter(Boolean)
               const t = d.tests[d.tests.length - 1]
-              const items = dayItems(PARTS, d, mentalCardFor(MENTAL_CARDS, s.startDate, d.date))
-              const done = items.filter((it) => d.checked.includes(itemId(it))).length
+              const items = daySteps(PARTS, d, mentalCardFor(MENTAL_CARDS, s.startDate, d.date))
+              const done = items.filter((st) => stepDone(d, st)).length
               return (
                 <li key={d.date} className="grid grid-cols-[48px_1fr_auto] gap-3 border-b py-3 text-14 last:border-0">
                   <span className="font-num text-13 text-sub tabular">{d.date.slice(5).replace('-', '/')}</span>
@@ -59,7 +54,7 @@ export function Log() {
 
 function Mini({ n, u }: { n: string; u: string }) {
   return (
-    <div className="flex flex-1 flex-col-reverse justify-end rounded bg-surface px-4 py-3">
+    <div className="flex flex-col-reverse">
       <dt className="text-12 text-sub">{u}</dt>
       <dd className="font-num text-24 leading-tight tabular">{n}</dd>
     </div>
@@ -74,14 +69,14 @@ function Chart({ tests }: { tests: ReturnType<typeof testHistory> }) {
     <figure className="mt-3">
       <svg viewBox={`0 0 ${w} ${h}`} className="block h-auto w-full" role="img"
         aria-label={`최근 통과 테스트 ${tests.length}회: ` + tests.map((t) => `${findChapter(PARTS, t.chapterId)?.no}단원 ${t.score}/${t.of} ${t.passed ? '통과' : '미통과'}`).join(', ')}>
-        {[0, 0.5, 1].map((r) => <text key={r} x={pl - 6} y={y(r) + 4} fontSize="11" textAnchor="end" fill="var(--sub)">{r * 100}%</text>)}
+        {[0, 0.5, 1].map((r) => <text key={r} x={pl - 6} y={y(r) + 4} fontSize="11.3" textAnchor="end" fill="var(--sub)">{r * 100}%</text>)}
         {tests.map((t, i) => {
           const x = pl + 5 + i * bw, bwid = bw - 12
           return (
             <g key={i}>
-              <rect x={x} y={y(t.score / t.of)} width={bwid} height={Math.max(2, h - pb - y(t.score / t.of))} rx={bwid / 2} fill={t.passed ? 'var(--forest)' : 'var(--line)'} />
+              <rect x={x} y={y(t.score / t.of)} width={bwid} height={Math.max(2, h - pb - y(t.score / t.of))} rx={bwid / 2} fill={t.passed ? 'var(--forest)' : 'var(--sub)'} />
               <line x1={x - 3} x2={x + bwid + 3} y1={y(t.need / t.of)} y2={y(t.need / t.of)} stroke="var(--amber)" strokeWidth="2" strokeLinecap="round" />
-              <text x={x + bwid / 2} y={h - 8} fontSize="11" textAnchor="middle" fill="var(--sub)">{findChapter(PARTS, t.chapterId)?.no}단원</text>
+              <text x={x + bwid / 2} y={h - 8} fontSize="11.3" textAnchor="middle" fill="var(--sub)">{findChapter(PARTS, t.chapterId)?.no}단원</text>
             </g>
           )
         })}
@@ -89,7 +84,7 @@ function Chart({ tests }: { tests: ReturnType<typeof testHistory> }) {
       <figcaption className="mt-2 flex flex-wrap gap-4 text-12 text-sub">
         <span className="flex items-center gap-1"><i className="h-1 w-3 rounded-full bg-gold" />그 단원의 통과 기준</span>
         <span className="flex items-center gap-1"><i className="h-3 w-3 rounded-full bg-forest" />통과</span>
-        <span className="flex items-center gap-1"><i className="h-3 w-3 rounded-full bg-line" />미통과</span>
+        <span className="flex items-center gap-1"><i className="h-3 w-3 rounded-full bg-sub" />미통과</span>
       </figcaption>
     </figure>
   )
@@ -102,7 +97,7 @@ export function Mental() {
   const reflections = Object.values(s.days).filter((d) => d.reflection).sort((a, b) => b.date.localeCompare(a.date))
   return (
     <div className="flex flex-col gap-6">
-      <h1 data-screen-title tabIndex={-1} className="text-24 font-light tracking-tight">멘탈 <b className="font-bold">노트</b></h1>
+      <h1 data-screen-title tabIndex={-1} className="text-24 font-bold tracking-tight">멘탈 노트</h1>
       <section aria-label="오늘의 멘탈 카드" className="rounded bg-hero p-5 text-hero-ink">
         <p className="text-12 text-hero-sub">오늘의 멘탈 카드</p>
         <p className="mt-1 text-20 font-medium">“{today.principle}”</p>

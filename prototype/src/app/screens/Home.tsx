@@ -2,12 +2,12 @@ import { PARTS } from '@/data/content'
 import { MENTAL_CARDS } from '@/data/mental'
 import { useStore } from '@/state/store'
 import {
-  ballsOfDay, chapterStatus, chaptersOf, currentChapter, estimateMinutes, extraAssignment, findLesson, isAssignmentDone,
+  ballsOfSteps, chapterStatus, chaptersOf, currentChapter, estimateMinutes, extraAssignment, findLesson, isAssignmentDone,
   lessonLabel, level, mentalCardFor, stepDone, stepProgress, stepsFor, streak,
 } from '@/logic/progress'
 import { useNav } from '../nav'
 import { CaretRight, Check } from '@phosphor-icons/react'
-import { Button, LevelRing, SectionHead, Thumb, fmt } from '../ui'
+import { Button, SectionHead, Thumb, fmt } from '../ui'
 
 export function koreanDate(date: string) {
   const d = new Date(date + 'T00:00:00')
@@ -22,7 +22,6 @@ export function Home() {
   const active = day.assignments.find((a) => !isAssignmentDone(PARTS, day, a)) ?? day.assignments[day.assignments.length - 1]
   const lv = level(PARTS, s.passed)
   const cur = currentChapter(PARTS, s.passed)
-  const ratio = cur ? cur.lessons.filter((l) => s.completedLessons.includes(l.id)).length / cur.lessons.length : 1
 
   const steps = active ? stepsFor(PARTS, active, mental) : []
   const doneCount = steps.filter((st) => stepDone(day, st)).length
@@ -42,24 +41,20 @@ export function Home() {
 
   const label = lessonLabel(PARTS, active)!
   const lesson = active.type === 'lesson' ? findLesson(PARTS, active.lessonId)?.lesson : undefined
-  const planned = steps.reduce((n, st) => n + (st.kind === 'balls' ? st.target : st.kind === 'test' && !st.items ? st.of : 0), 0)
-  const hit = ballsOfDay(PARTS, day)
+  const { hit, planned } = ballsOfSteps(day, steps)
   const started = steps.some((st) => stepProgress(day, st) > 0)
   const cta = routineDone ? '오늘 연습 다시 보기' : started ? `이어서 하기 (${doneCount}/${steps.length})` : '연습 시작'
   const total = chaptersOf(PARTS).length
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-end justify-between gap-3">
-        <div>
+      <div>
           <p className="text-13 text-sub">{koreanDate(s.today)}</p>
           <h1 data-screen-title tabIndex={-1} className="text-24 font-light tracking-tight">
             {!routineDone ? <>오늘은<br /><b className="font-bold">{label.title}</b></>
               : failedToday ? <>재도전 기록<br /><b className="font-bold">완료</b></>
                 : <>오늘 연습<br /><b className="font-bold">끝났어요</b></>}
           </h1>
-        </div>
-        <LevelRing n={lv.n} name={lv.name} ratio={ratio} />
       </div>
 
       {routineDone && (
@@ -79,12 +74,14 @@ export function Home() {
         </div>
       )}
 
-      <section aria-labelledby="today-title" className="flex flex-col gap-4 rounded bg-hero p-5 text-hero-ink">
-        <div>
-          <p className="text-13 text-hero-sub">{label.where}</p>
-          <h2 id="today-title" className="mt-1 text-20 font-medium tracking-tight">{label.title}</h2>
-        </div>
-        {lesson ? <Thumb duration={lesson.durationSec} /> : (
+      <section aria-label="오늘 레슨" className="flex flex-col gap-4 rounded bg-hero p-5 text-hero-ink">
+        <p className="text-13 text-hero-sub">{label.where}</p>
+        {lesson && active.type === 'lesson' ? (
+          <button onClick={() => nav.push({ name: 'lesson', lessonId: active.lessonId })} className="flex flex-col gap-2 text-left">
+            <Thumb duration={lesson.durationSec} />
+            <span className="text-13 text-hero-sub underline underline-offset-4">레슨 영상과 자세 포인트 보기</span>
+          </button>
+        ) : (
           <p className="rounded-sm bg-hero-tint p-4 text-14">{label.chapter.test.description}</p>
         )}
         <dl className="flex gap-6">
@@ -93,11 +90,6 @@ export function Home() {
           <Fact n={`${doneCount}/${steps.length}`} u="끝낸 연습" />
         </dl>
         <Button onClick={() => nav.push({ name: 'session', start: routineDone ? steps.length : undefined })} className="w-full">{cta}</Button>
-        {lesson && active.type === 'lesson' && (
-          <button onClick={() => nav.push({ name: 'lesson', lessonId: active.lessonId })} className="-my-2 min-h-[44px] text-13 text-hero-sub underline underline-offset-4">
-            레슨 영상과 자세 포인트 먼저 보기
-          </button>
-        )}
       </section>
 
       <section>
@@ -107,8 +99,8 @@ export function Home() {
             const done = stepDone(day, st)
             const n = stepProgress(day, st)
             const amount = st.kind === 'test' ? (st.items ? `${st.of}항목` : `공 ${st.of}개`)
-              : st.kind === 'balls' ? `${n > 0 && !done ? `${n}/` : ''}공 ${st.target}개`
-                : st.kind === 'reps' ? `${n > 0 && !done ? `${n}/` : ''}${st.target}회`
+              : st.kind === 'balls' ? (n > 0 && !done ? `공 ${n}/${st.target}` : `공 ${st.target}개`)
+                : st.kind === 'reps' ? (n > 0 && !done ? `${n}/${st.target}회` : `${st.target}회`)
                   : st.kind === 'timer' ? fmt(st.target) : ''
             return (
               <li key={st.id}>
@@ -130,7 +122,7 @@ export function Home() {
       </section>
 
       <section>
-        <SectionHead title="교본에서 내 위치" note={`${total}단원 중 ${cur.no}단원`} />
+        <SectionHead title={`레벨 ${lv.n}, ${lv.name} 단계`} note={`${total}단원 중 ${s.passed.length}단원 통과`} />
         <div className="mt-3 grid grid-cols-12 gap-1" role="img" aria-label={`${total}단원 중 ${s.passed.length}단원 통과, 지금 ${cur.no}단원 ${cur.title}`}>
           {chaptersOf(PARTS).map((c) => {
             const st = chapterStatus(PARTS, s.passed, c.id)
