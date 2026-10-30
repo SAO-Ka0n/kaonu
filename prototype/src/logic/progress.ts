@@ -3,7 +3,8 @@ import type { Chapter, Drill, Lesson, MentalCard, Part } from '@/data/types'
 
 export type Assignment = { type: 'lesson'; lessonId: string } | { type: 'test'; chapterId: string }
 
-export type TestResult = { chapterId: string; score: number; of: number; passed: boolean }
+// need: 그 단원의 통과 기준, balls: 테스트에서 친 공 (체크리스트 테스트는 0)
+export type TestResult = { chapterId: string; score: number; of: number; need: number; passed: boolean; balls: number }
 
 export type DayLog = {
   date: string // YYYY-MM-DD, 폰 현지 날짜
@@ -99,8 +100,13 @@ export function metMentalCards(cards: MentalCard[], startDate: string, today: st
   return Array.from({ length: n }, (_, k) => cards[(start + k) % cards.length])
 }
 
+export function mentalItem(mental: MentalCard): RoutineItem {
+  return { kind: 'mental', id: `mental:${mental.id}`, title: mental.drill, detail: mental.principle }
+}
+
+// 오늘 연습 = 레슨 드릴 (테스트 날은 복습 드릴) + 멘탈 드릴 1개. 홈, 레슨, 일지가 모두 이 정의를 쓴다.
 export function routineFor(parts: Part[], a: Assignment, mental: MentalCard): RoutineItem[] {
-  const m: RoutineItem = { kind: 'mental', id: `mental:${mental.id}`, title: mental.drill, detail: mental.principle }
+  const m = mentalItem(mental)
   if (a.type === 'lesson') {
     const found = findLesson(parts, a.lessonId)
     return [...(found?.lesson.drills ?? []).map((drill): RoutineItem => ({ kind: 'drill', drill })), m]
@@ -140,7 +146,61 @@ export function ballsOf(parts: Part[], days: Record<string, DayLog>): number {
     for (const l of ch.lessons) for (const d of l.drills) drills.set(d.id, d.balls ?? 0)
     drills.set(ch.reviewDrill.id, ch.reviewDrill.balls ?? 0)
   }
-  return Object.values(days).reduce((sum, day) => sum + day.checked.reduce((s, id) => s + (drills.get(id) ?? 0), 0), 0)
+  return Object.values(days).reduce((sum, day) =>
+    sum + day.checked.reduce((s, id) => s + (drills.get(id) ?? 0), 0) + day.tests.reduce((s, t) => s + t.balls, 0), 0)
+}
+
+// 하루 전체의 연습 항목 (여러 레슨을 했어도 멘탈 드릴은 한 번만).
+export function dayItems(parts: Part[], day: DayLog, mental: MentalCard): RoutineItem[] {
+  const seen = new Set<string>()
+  return day.assignments.flatMap((a) => routineFor(parts, a, mental)).filter((it) => {
+    const id = itemId(it)
+    if (seen.has(id)) return false
+    seen.add(id)
+    return true
+  })
+}
+
+// 드릴 한 개에 드는 시간(분) 추정: "N분"은 그대로, 공은 개당 30초, 반복 동작은 회당 20초.
+export function drillMinutes(d: Drill): number {
+  const min = d.qty.match(/(\d+)\s*분/)
+  if (min) return Number(min[1])
+  if (d.balls) return d.balls * 0.5
+  const reps = d.qty.match(/(\d+)/)
+  return reps ? Number(reps[1]) / 3 : 3
+}
+
+export function estimateMinutes(parts: Part[], a: Assignment): number {
+  let m: number
+  if (a.type === 'lesson') {
+    const f = findLesson(parts, a.lessonId)
+    m = (f?.lesson.durationSec ?? 0) / 60 + (f?.lesson.drills ?? []).reduce((n, d) => n + drillMinutes(d), 0)
+  } else {
+    const ch = findChapter(parts, a.chapterId)
+    const t = ch?.test
+    m = (ch ? drillMinutes(ch.reviewDrill) : 0) + (t?.kind === 'count' ? t.of * 0.5 : 10)
+  }
+  return Math.max(5, Math.round(m / 5) * 5)
+}
+
+export function testBalls(parts: Part[], a: Assignment): number {
+  if (a.type !== 'test') return 0
+  const t = findChapter(parts, a.chapterId)?.test
+  return t?.kind === 'count' ? t.of : 0
+}
+
+// "다음 레슨 미리 하기"가 가능한지: 오늘 이미 받은 것과 다른 다음 할 일이 있을 때만.
+export function extraAssignment(parts: Part[], s: Pick<AppState, 'passed' | 'completedLessons'>, day: DayLog): Assignment | null {
+  const skip = day.assignments.flatMap((x) => (x.type === 'lesson' ? [x.lessonId] : []))
+  const next = nextAssignment(parts, s, skip)
+  if (!next) return null
+  const dup = day.assignments.some((x) => x.type === next.type && (x.type === 'lesson' ? next.type === 'lesson' && x.lessonId === next.lessonId : next.type === 'test' && x.chapterId === next.chapterId))
+  return dup ? null : next
+}
+
+// 화면에 보이는 드릴 양 표기: "20구"는 "공 20개"로.
+export function qtyLabel(qty: string): string {
+  return qty.replace(/(\d+)\s*구/, '공 $1개')
 }
 
 export function testHistory(days: Record<string, DayLog>): (TestResult & { date: string })[] {
@@ -152,7 +212,7 @@ export function testHistory(days: Record<string, DayLog>): (TestResult & { date:
 export function lessonLabel(parts: Part[], a: Assignment): { chapter: Chapter; title: string; where: string } | null {
   if (a.type === 'test') {
     const ch = findChapter(parts, a.chapterId)
-    return ch ? { chapter: ch, title: `${ch.title} 통과 테스트`, where: `${ch.no}단원 마지막 관문` } : null
+    return ch ? { chapter: ch, title: `${ch.title} 통과 테스트`, where: `${ch.no}단원 마지막 테스트` } : null
   }
   const f = findLesson(parts, a.lessonId)
   return f ? { chapter: f.chapter, title: f.lesson.title, where: `${f.chapter.no}단원 ${f.chapter.title}, 레슨 ${f.index + 1}/${f.chapter.lessons.length}` } : null

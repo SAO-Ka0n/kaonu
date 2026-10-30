@@ -27,17 +27,17 @@ function DemoPanel() {
     if (theme === 'system') document.documentElement.removeAttribute('data-theme')
     else document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
-  const btn = 'min-h-[40px] rounded-full px-4 text-[13px] font-medium ring-1 ring-inset ring-line text-ink active:scale-[0.98]'
+  const btn = 'min-h-[40px] rounded-full px-4 text-13 font-medium ring-1 ring-inset ring-line text-ink active:scale-[0.98]'
   return (
     <aside className="flex flex-col gap-5 px-4 py-8 text-ink md:w-[300px] md:px-0 md:pt-6">
       <div>
-        <h1 className="text-xl font-light tracking-tight">골프 바이블 <b className="font-bold">프로토타입</b></h1>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-sub">
+        <h1 className="text-20 font-light tracking-tight">골프 바이블 <b className="font-bold">프로토타입</b></h1>
+        <p className="mt-2 text-13 leading-relaxed text-sub">
           실제 Expo 앱을 만들기 전에 화면 흐름을 눌러 보는 시제품이에요. 기록은 이 브라우저에만 저장돼요. 영상은 촬영 전이라 잔디 화면으로 재생을 흉내 내요.
         </p>
       </div>
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-bold text-sub">앱 속 날짜: {koreanDate(s.today)}</span>
+        <span className="text-12 font-bold text-sub">앱 속 날짜: {koreanDate(s.today)}</span>
         <div className="flex flex-wrap gap-2">
           <button className={btn} onClick={() => dispatch({ type: 'nextDay' })}>다음 날로 넘기기</button>
           <button className={btn} onClick={() => dispatch({ type: 'replace', state: demoState() })}>예시 상태로</button>
@@ -45,7 +45,7 @@ function DemoPanel() {
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        <span className="text-xs font-bold text-sub">화면 테마</span>
+        <span className="text-12 font-bold text-sub">화면 테마</span>
         <div className="flex gap-2">
           {(['system', 'light', 'dark'] as Theme[]).map((t) => (
             <button key={t} onClick={() => setTheme(t)} aria-pressed={theme === t}
@@ -53,7 +53,7 @@ function DemoPanel() {
           ))}
         </div>
       </div>
-      <div className="rounded-[20px] bg-surface p-4 text-[13px] leading-relaxed">
+      <div className="rounded bg-surface p-4 text-13 leading-relaxed">
         <b className="mb-1 block">눌러 볼 것</b>
         <ol className="list-decimal space-y-1 pl-4 text-sub">
           <li>홈에서 드릴을 모두 체크하면 회고 화면이 떠요</li>

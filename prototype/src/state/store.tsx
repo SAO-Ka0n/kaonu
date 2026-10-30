@@ -1,11 +1,11 @@
-import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useReducer, useState, type ReactNode } from 'react'
 import { PARTS } from '@/data/content'
 import {
-  addDays, chaptersOf, findLesson, isAssignmentDone, nextAssignment, toDateString,
-  type AppState, type DayLog,
+  addDays, chaptersOf, extraAssignment, findLesson, isAssignmentDone, nextAssignment, toDateString,
+  type AppState, type DayLog, type TestResult,
 } from '@/logic/progress'
 
-const KEY = 'golf-bible-proto-v1'
+const KEY = 'golf-bible-proto-v2' // v2: 테스트 결과에 통과 기준과 공 개수 추가
 
 function ensureDay(s: AppState, date: string): AppState {
   if (s.days[date]) return s
@@ -30,7 +30,7 @@ export function demoState(): AppState {
     const of = t.kind === 'count' ? t.of : t.items.length
     const need = t.kind === 'count' ? t.need : t.items.length
     const score = Math.max(0, Math.min(of, need + offset))
-    return { chapterId: ch.id, score, of, passed: score >= need }
+    return { chapterId: ch.id, score, of, need, passed: score >= need, balls: t.kind === 'count' ? t.of : 0 }
   }
   const allDrills = (lessonIdx: number) => c5.lessons[lessonIdx].drills.map((x) => x.id)
   const days: Record<string, DayLog> = {}
@@ -53,7 +53,7 @@ export function demoState(): AppState {
 type Action =
   | { type: 'toggle'; id: string }
   | { type: 'extra' }
-  | { type: 'test'; chapterId: string; score: number; of: number; passed: boolean }
+  | { type: 'test'; result: TestResult }
   | { type: 'reflect'; good: string; fix: string }
   | { type: 'nextDay' }
   | { type: 'onboard' }
@@ -72,15 +72,13 @@ function reducer(s: AppState, a: Action): AppState {
       return { ...s, completedLessons: [...new Set([...s.completedLessons, ...done])], days: { ...s.days, [s.today]: next } }
     }
     case 'extra': {
-      const skip = day.assignments.flatMap((x) => (x.type === 'lesson' ? [x.lessonId] : []))
-      const next = nextAssignment(PARTS, s, skip)
-      if (!next || day.assignments.some((x) => JSON.stringify(x) === JSON.stringify(next))) return s
-      return setDay({ assignments: [...day.assignments, next] })
+      const next = extraAssignment(PARTS, s, day)
+      return next ? setDay({ assignments: [...day.assignments, next] }) : s
     }
     case 'test': {
-      const r = { chapterId: a.chapterId, score: a.score, of: a.of, passed: a.passed }
+      const r = a.result
       const s2 = setDay({ tests: [...day.tests, r] })
-      return a.passed && !s.passed.includes(a.chapterId) ? { ...s2, passed: [...s.passed, a.chapterId] } : s2
+      return r.passed && !s.passed.includes(r.chapterId) ? { ...s2, passed: [...s.passed, r.chapterId] } : s2
     }
     case 'reflect':
       return setDay({ reflection: { good: a.good, fix: a.fix } })
@@ -108,14 +106,20 @@ function load(): AppState {
   return demoState()
 }
 
-const Ctx = createContext<{ s: AppState; dispatch: (a: Action) => void } | null>(null)
+const Ctx = createContext<{ s: AppState; dispatch: (a: Action) => void; saveFailed: boolean } | null>(null)
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [s, dispatch] = useReducer(reducer, undefined, load)
+  const [saveFailed, setSaveFailed] = useState(false)
   useEffect(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(s)) } catch { /* 무시 */ }
+    try {
+      localStorage.setItem(KEY, JSON.stringify(s))
+      setSaveFailed(false)
+    } catch {
+      setSaveFailed(true)
+    }
   }, [s])
-  return <Ctx.Provider value={{ s, dispatch }}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ s, dispatch, saveFailed }}>{children}</Ctx.Provider>
 }
 
 export function useStore() {

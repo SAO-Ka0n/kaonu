@@ -4,8 +4,6 @@ export type Tab = 'home' | 'book' | 'log' | 'mind'
 export type Route = { name: 'lesson'; lessonId: string } | { name: 'test'; chapterId: string } | { name: 'chapter'; chapterId: string }
 
 export type Nav = {
-  tab: Tab
-  stack: Route[]
   setTab: (t: Tab) => void
   push: (r: Route) => void
   pop: () => void

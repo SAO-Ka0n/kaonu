@@ -1,17 +1,17 @@
 import { CaretLeft, CaretRight, LockSimple, Flag } from '@phosphor-icons/react'
 import { PARTS } from '@/data/content'
+import { MENTAL_CARDS } from '@/data/mental'
 import type { Chapter } from '@/data/types'
 import { useStore } from '@/state/store'
-import { chapterStatus, findChapter, findLesson, isAssignmentDone, itemId, routineFor, mentalCardFor } from '@/logic/progress'
-import { MENTAL_CARDS } from '@/data/mental'
+import { chapterStatus, chaptersOf, findChapter, findLesson, isAssignmentDone, itemId, mentalCardFor, routineFor } from '@/logic/progress'
 import { useNav } from '../nav'
 import { Routine, SectionHead, Thumb, VideoPlayer } from '../ui'
 
 export function BackBar({ label }: { label: string }) {
   const nav = useNav()
   return (
-    <button onClick={nav.pop} className="-ml-1 flex min-h-[40px] items-center gap-1 self-start pr-3 text-[13.5px] text-sub">
-      <CaretLeft size={16} />{label}
+    <button onClick={nav.pop} className="-ml-2 flex min-h-[44px] items-center gap-1 self-start pl-1 pr-3 text-14 text-sub">
+      <CaretLeft size={16} aria-hidden="true" />{label}<span className="sr-only">로 돌아가기</span>
     </button>
   )
 }
@@ -19,35 +19,40 @@ export function BackBar({ label }: { label: string }) {
 export function Book() {
   const { s } = useStore()
   const nav = useNav()
-  let no = 0
+  const total = chaptersOf(PARTS).length
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-2xl font-light leading-snug tracking-tight">골프 바이블<br /><b className="font-bold">12단원</b></h2>
-        <p className="mt-1.5 text-[13px] text-sub">단원마다 영상 레슨과 통과 테스트가 있어요. 테스트를 통과하면 다음 단원이 열려요.</p>
+        <h1 data-screen-title tabIndex={-1} className="text-24 font-light tracking-tight">골프 바이블<br /><b className="font-bold">{total}단원</b></h1>
+        <p className="mt-2 text-13 text-sub">단원마다 영상 레슨과 통과 테스트가 있어요. 테스트를 통과하면 다음 단원이 열려요.</p>
       </div>
       {PARTS.map((p) => (
-        <div key={p.id}>
-          <h5 className="mb-1.5 text-xs font-medium text-sub">{p.title}</h5>
-          <div className="flex flex-col rounded-[20px] bg-surface px-3.5 py-1">
+        <section key={p.id} aria-label={p.title}>
+          <h2 className="mb-2 text-12 font-medium text-sub">{p.title}</h2>
+          <ul className="flex flex-col rounded bg-surface px-4 py-1">
             {p.chapters.map((c) => {
-              no++
               const st = chapterStatus(PARTS, s.passed, c.id)
-              const row = (
-                <button key={c.id}
-                  onClick={() => st === 'locked' ? nav.toast('앞 단원을 통과하면 열려요') : nav.push({ name: 'chapter', chapterId: c.id })}
-                  className="grid min-h-[50px] w-full grid-cols-[30px_1fr_auto] items-center gap-2.5 border-b border-line py-3 text-left last:border-0">
-                  <span className={`font-num text-[15px] tabular ${st === 'now' ? 'text-gold' : 'text-sub'} ${st === 'locked' ? 'opacity-60' : ''}`}>{String(no).padStart(2, '0')}</span>
-                  <span className={`text-[14.5px] ${st === 'locked' ? 'text-sub opacity-60' : ''}`}>{c.title}</span>
-                  <span className={`flex items-center gap-1 text-[11.5px] ${st === 'now' ? 'font-bold text-gold' : 'text-sub'}`}>
-                    {st === 'done' ? '통과' : st === 'now' ? '진행 중' : <><LockSimple size={12} />잠김</>}
+              const inner = (
+                <>
+                  <span className={`font-num text-15 tabular ${st === 'now' ? 'text-gold-text' : 'text-sub'}`}>{String(c.no).padStart(2, '0')}</span>
+                  <span className={`text-15 ${st === 'locked' ? 'text-sub' : ''}`}>{c.title}</span>
+                  <span className={`flex items-center gap-1 text-12 ${st === 'now' ? 'font-bold text-gold-text' : 'text-sub'}`}>
+                    {st === 'done' ? <>통과<CaretRight size={12} aria-hidden="true" /></> : st === 'now' ? '진행 중' : <><LockSimple size={12} aria-hidden="true" />잠김</>}
                   </span>
-                </button>
+                </>
               )
-              return st === 'now' ? [row, <LessonList key={c.id + 'l'} chapter={c} />] : row
+              const cls = 'grid min-h-[52px] w-full grid-cols-[32px_1fr_auto] items-center gap-3 py-3 text-left'
+              return (
+                <li key={c.id} className="border-b last:border-0">
+                  {st === 'done' ? <button onClick={() => nav.push({ name: 'chapter', chapterId: c.id })} className={cls}>{inner}</button>
+                    : st === 'locked' ? <button onClick={() => nav.toast(`${c.no}단원은 앞 단원을 통과하면 열려요`)} aria-disabled="true" className={cls}>{inner}</button>
+                      : <div className={cls}>{inner}</div>}
+                  {st === 'now' && <LessonList chapter={c} />}
+                </li>
+              )
             })}
-          </div>
-        </div>
+          </ul>
+        </section>
       ))}
     </div>
   )
@@ -56,26 +61,27 @@ export function Book() {
 function LessonList({ chapter }: { chapter: Chapter }) {
   const { s } = useStore()
   const nav = useNav()
-  const today = s.days[s.today].assignments
+  const day = s.days[s.today]
   return (
-    <div className="flex flex-col gap-2.5 border-b border-line pb-3">
+    <div className="flex flex-col gap-3 pb-4">
       {chapter.lessons.map((l, i) => {
         const done = s.completedLessons.includes(l.id)
-        const isToday = today.some((a) => a.type === 'lesson' && a.lessonId === l.id)
+        const today = day.assignments.find((a) => a.type === 'lesson' && a.lessonId === l.id)
+        const todayOpen = !!today && !isAssignmentDone(PARTS, day, today)
         return (
           <button key={l.id} onClick={() => nav.push({ name: 'lesson', lessonId: l.id })} className="grid grid-cols-[96px_1fr] items-center gap-3 text-left">
             <Thumb duration={l.durationSec} small />
             <span>
-              <b className={`block text-[13.5px] font-medium leading-snug ${isToday ? 'text-gold' : ''}`}>{i + 1}. {l.title}</b>
-              <small className="text-[11.5px] text-sub">{isToday ? '오늘 레슨' : done ? '완료' : '다음 레슨'}</small>
+              <b className={`block text-14 font-medium ${todayOpen ? 'text-gold-text' : ''}`}>{i + 1}. {l.title}</b>
+              <small className="text-12 text-sub">{todayOpen ? '오늘 레슨' : done ? '완료' : '예정'}</small>
             </span>
           </button>
         )
       })}
       <button onClick={() => nav.push({ name: 'test', chapterId: chapter.id })}
-        className="flex min-h-[48px] items-center justify-between rounded-[14px] bg-forest-soft px-3.5 text-left">
-        <span className="flex items-center gap-2 text-[13.5px] font-medium"><Flag size={16} className="text-gold" />통과 테스트</span>
-        <CaretRight size={14} className="text-sub" />
+        className="flex min-h-[48px] items-center justify-between rounded-sm bg-forest-soft px-4 text-left">
+        <span className="flex items-center gap-2 text-14 font-medium"><Flag size={16} className="text-gold-text" aria-hidden="true" />{chapter.no}단원 통과 테스트</span>
+        <CaretRight size={14} className="text-sub" aria-hidden="true" />
       </button>
     </div>
   )
@@ -83,15 +89,13 @@ function LessonList({ chapter }: { chapter: Chapter }) {
 
 export function ChapterScreen({ chapterId }: { chapterId: string }) {
   const ch = findChapter(PARTS, chapterId)!
-  const { s } = useStore()
-  const st = chapterStatus(PARTS, s.passed, ch.id)
   return (
     <div className="anim-slide flex flex-col gap-4">
       <BackBar label="교본" />
       <div>
-        <p className="text-xs text-sub">{ch.no}단원 {st === 'done' ? '통과' : '진행 중'}</p>
-        <h2 className="text-[22px] font-medium tracking-tight">{ch.title}</h2>
-        <p className="mt-1 text-[13.5px] text-sub">{ch.summary}</p>
+        <p className="text-12 text-sub">{ch.no}단원, 통과함</p>
+        <h1 data-screen-title tabIndex={-1} className="text-24 font-medium tracking-tight">{ch.title}</h1>
+        <p className="mt-1 text-14 text-sub">{ch.summary}</p>
       </div>
       <LessonList chapter={ch} />
     </div>
@@ -100,46 +104,43 @@ export function ChapterScreen({ chapterId }: { chapterId: string }) {
 
 export function LessonScreen({ lessonId }: { lessonId: string }) {
   const { s, dispatch } = useStore()
-  const found = findLesson(PARTS, lessonId)!
-  const { lesson, chapter, index } = found
+  const { lesson, chapter, index } = findLesson(PARTS, lessonId)!
   const day = s.days[s.today]
   const assignment = day.assignments.find((a) => a.type === 'lesson' && a.lessonId === lessonId)
-  const items = routineFor(PARTS, { type: 'lesson', lessonId }, mentalCardFor(MENTAL_CARDS, s.startDate, s.today)).filter((it) => it.kind === 'drill')
+  // 오늘 레슨이면 홈과 같은 "오늘 연습" 목록(멘탈 포함)을, 아니면 드릴만 읽기 전용으로
+  const items = assignment
+    ? routineFor(PARTS, assignment, mentalCardFor(MENTAL_CARDS, s.startDate, s.today))
+    : lesson.drills.map((drill) => ({ kind: 'drill' as const, drill }))
   const done = items.filter((it) => day.checked.includes(itemId(it))).length
+  const completed = s.completedLessons.includes(lessonId)
   return (
-    <div className="anim-slide flex flex-col gap-5">
+    <div className="anim-slide flex flex-col gap-6">
       <BackBar label={`${chapter.no}단원 ${chapter.title}`} />
       <VideoPlayer duration={lesson.durationSec} marks={lesson.marks} youtubeId={lesson.youtubeId} />
       <div>
-        <p className="text-[12.5px] text-sub">{chapter.title} 단원, 레슨 {index + 1}/{chapter.lessons.length}</p>
-        <h2 className="text-[21px] font-medium leading-snug tracking-tight">{lesson.title}</h2>
-        <p className="mt-0.5 text-[13.5px] text-sub">{lesson.goal}</p>
+        <p className="text-13 text-sub">{chapter.no}단원 {chapter.title}, 레슨 {index + 1}/{chapter.lessons.length}</p>
+        <h1 data-screen-title tabIndex={-1} className="text-20 font-medium tracking-tight">{lesson.title}</h1>
+        <p className="mt-1 text-14 text-sub">{lesson.goal}</p>
       </div>
       <section>
         <SectionHead title="자세 체크포인트" note="거울이나 영상으로 확인" />
-        <div className="mt-2.5 grid grid-cols-2 gap-2">
+        <dl className="mt-3 grid grid-cols-2 gap-2">
           {lesson.checkpoints.map((c) => (
-            <div key={c.key} className="rounded-[14px] bg-surface p-3">
-              <b className="block font-num text-xl font-normal leading-tight">{c.key}</b>
-              <span className="mt-1 block text-[12.5px] leading-snug">{c.text}</span>
+            <div key={c.key} className="flex flex-col rounded-sm bg-surface p-3">
+              <dt className="font-num text-20 leading-tight">{c.key}</dt>
+              <dd className="mt-1 text-13">{c.text}</dd>
             </div>
           ))}
-        </div>
+        </dl>
       </section>
       <section>
-        <SectionHead title="연습 드릴" note={assignment ? `${done}/${items.length}` : '오늘 레슨이 되면 체크할 수 있어요'} />
-        {assignment
-          ? <Routine items={items} checked={day.checked} onToggle={(id) => dispatch({ type: 'toggle', id })} />
-          : <ul className="mt-1 flex flex-col">{lesson.drills.map((d) => (
-              <li key={d.id} className="grid grid-cols-[1fr_auto] gap-3 border-b border-line py-3 last:border-0">
-                <span><b className="block text-[14.5px] font-medium">{d.title}</b><small className="text-xs text-sub">{d.detail}</small></span>
-                <span className="font-num text-[13px] text-sub">{d.qty}</span>
-              </li>))}
-            </ul>}
-        {assignment && isAssignmentDone(PARTS, day, assignment) && <p className="mt-2 text-[13px] font-medium text-forest">이 레슨을 완료했어요.</p>}
+        <SectionHead title={assignment ? '오늘 연습' : '연습 드릴'}
+          note={assignment ? `${done}/${items.length}` : completed ? '완료한 레슨이에요' : '이 레슨 차례가 되면 체크할 수 있어요'} />
+        <Routine items={items} checked={day.checked} onToggle={assignment ? (id) => dispatch({ type: 'toggle', id }) : undefined} />
+        {assignment && isAssignmentDone(PARTS, day, assignment) && <p className="mt-2 text-13 font-medium text-forest" role="status">이 레슨의 드릴을 모두 끝냈어요.</p>}
       </section>
-      <div className="rounded-[20px] p-4 text-[13px] ring-1 ring-inset ring-line">
-        <b className="mb-0.5 block text-[13.5px]">단원 통과 기준</b>{chapter.test.description}
+      <div className="rounded p-4 text-13 ring-1 ring-inset ring-line">
+        <b className="mb-1 block text-14">{chapter.no}단원 통과 기준</b>{chapter.test.description}
       </div>
     </div>
   )
