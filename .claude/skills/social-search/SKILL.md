@@ -9,7 +9,7 @@ description: 인스타그램·트위터(X)·레딧·틱톡에서 키워드로 �
 
 | 플랫폼 | 1순위 (직접) | 2순위 | 3순위 |
 |---|---|---|---|
-| Reddit | `reddit_search.py` (무료, 키 없음) | Xpoz | — |
+| Reddit | `reddit_search.py` (공식 OAuth, 무료) | Xpoz | — |
 | X | `x_search.py` (공식 API, 사용량 과금) | Xpoz | 웹 검색 |
 | Instagram | `ig_search.py` (Graph API, 무료) | Xpoz | 웹 검색 |
 | TikTok | Xpoz | 웹 검색 | — |
@@ -35,7 +35,7 @@ python3 .claude/skills/social-search/scripts/x_search.py "쿼리" --sort recency
 python3 .claude/skills/social-search/scripts/ig_search.py "해시태그" --sort top --limit 10
 ```
 
-- **Reddit**: 키가 필요 없다. 웹 검색은 reddit 도메인을 거부하므로 이 스크립트나 Xpoz만 쓴다.
+- **Reddit**: 환경 변수 `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`이 필요하다. 로그인 없는 공개 JSON은 403으로 막히므로 app-only OAuth 토큰으로 `oauth.reddit.com`을 부른다. 웹 검색은 reddit 도메인을 거부하므로 이 스크립트나 Xpoz만 쓴다.
 - **X**: 환경 변수 `X_BEARER_TOKEN`이 필요하다. 최근 7일만 검색되고 게시물 1개를 읽을 때마다 과금되므로 `--limit`은 10을 넘기지 않는다. 쿼리 문법은 X 검색 문법(`"정확한 구문"`, `OR`, `-제외어`)을 따르며 리트윗은 기본으로 뺀다.
 - **Instagram**: 환경 변수 `IG_ACCESS_TOKEN`, `IG_USER_ID`(비즈니스·크리에이터 계정)가 필요하다. **해시태그 한 단어**로만 검색된다(공백 제거, 예: `클로드코드`, `claudecode`). 계정당 7일에 해시태그 30개까지라 한 요청에 해시태그는 1~2개만 쓴다. 작성자 이름은 API가 주지 않으므로 칸을 비운다.
 
@@ -72,7 +72,8 @@ ToolSearch로 `xpoz`를 찾아 해당 플랫폼 도구를 호출한다. `limit`(
 
 해당하는 줄만 붙인다.
 
-- 차단(코드 2): "환경 설정 → Network access → Allowed domains에 `www.reddit.com` / `api.x.com` / `graph.facebook.com` 중 막힌 것 추가 후 새 세션"
+- 차단(코드 2): "환경 설정 → Network access → Allowed domains에 `www.reddit.com`·`oauth.reddit.com` / `api.x.com` / `graph.facebook.com` 중 막힌 것 추가 후 새 세션"
+- Reddit 키 없음(코드 3): "reddit.com/prefs/apps에서 script 타입 앱 생성 → client ID와 secret을 `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`으로 저장 후 새 세션"
 - X 키 없음(코드 3): "X 개발자 콘솔(developer.x.com)에서 Bearer Token 발급 → 환경 설정의 Network secrets(또는 환경 변수)에 `X_BEARER_TOKEN`으로 저장 후 새 세션"
 - Instagram 키 없음(코드 3): "Instagram 비즈니스 계정을 Meta 개발자 앱에 연결 → 액세스 토큰과 IG 사용자 ID를 `IG_ACCESS_TOKEN`, `IG_USER_ID`로 저장 후 새 세션"
 - Xpoz 인증 오류: "Xpoz 재로그인: https://claude.ai/customize/connectors → Xpoz 연결 해제 후 재연결 → 새 세션"
