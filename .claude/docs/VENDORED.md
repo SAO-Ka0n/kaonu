@@ -23,11 +23,19 @@ Installed as project skills, commands have no plugin prefix (`/poteto-mode`, not
   Most pstack and Matt skills set `disable-model-invocation: true`, so `CLAUDE.md` tells Claude to read their
   `SKILL.md` instead of calling them with the Skill tool.
 
-## Using this outside this repo (local machine)
+To update the vendored copies, copy the same folders from a newer upstream commit over these and update the table.
 
-Copy `.claude/skills`, `.claude/agents` and `.claude/docs` into `~/.claude/` (keep the same layout so the
-`../../docs` links resolve), and put the rules from `CLAUDE.md` into `~/.claude/CLAUDE.md` with paths changed
-to `~/.claude/skills/`. Deny rules only apply where they are written, so copy the `permissions.deny` list into
-`~/.claude/settings.json` or turn those skills off in claude.ai skill settings.
+## 다른 프로젝트에서도 쓰기 (맥북 로컬)
 
-To update, copy the same folders from a newer upstream commit over these and update the table.
+To get the same skills, agents, docs, `CLAUDE.md` rules and deny list in every project on your Mac:
+
+```sh
+git clone https://github.com/SAO-Ka0n/kaonu.git ~/kaonu && ~/kaonu/scripts/install-global.sh
+```
+
+To update later: `cd ~/kaonu && git pull && ./scripts/install-global.sh`.
+
+The script copies `.claude/{skills,agents,docs}` into `~/.claude/`, writes the root `CLAUDE.md` rules into a
+`<!-- kaonu-skills:start -->` block in `~/.claude/CLAUDE.md`, and adds the `permissions.deny` list to
+`~/.claude/settings.json`. Re-running it changes nothing that is already current. Anything it replaces is moved
+to `~/.claude/backups/kaonu-<timestamp>/` first. Other skills and settings are left alone.
