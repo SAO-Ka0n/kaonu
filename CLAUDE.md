@@ -1,6 +1,6 @@
 # 작업 방식
 
-이 저장소의 스킬은 `.claude/skills/`에 있다. 출처는 `.claude/docs/VENDORED.md`.
+스킬은 `.claude/skills/`에 있다. 출처는 `.claude/docs/VENDORED.md`.
 
 ## 기본: pstack poteto-mode
 
