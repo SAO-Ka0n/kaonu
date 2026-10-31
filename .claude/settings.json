@@ -12,6 +12,7 @@
       "Skill(anthropic-skills:writing-plans)",
       "Skill(anthropic-skills:executing-plans)",
       "Skill(anthropic-skills:using-superpowers)",
+      "Skill(anthropic-skills:diagnosing-superpowers)",
       "Skill(anthropic-skills:root-cause-first)",
       "Skill(anthropic-skills:systematic-debugging)",
       "Skill(anthropic-skills:verification-before-completion)",
