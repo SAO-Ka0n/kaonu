@@ -44,8 +44,9 @@ description: 인스타그램·트위터(X)·레딧·틱톡에서 키워드로 �
 | X | `WebSearch` `allowed_domains: ["x.com", "twitter.com"]` | 게시물 링크와 요약 |
 | TikTok | `WebSearch` `allowed_domains: ["tiktok.com"]` | 영상 링크와 설명 |
 | Instagram | `WebSearch` `allowed_domains: ["instagram.com"]` | 계정 페이지 위주, 게시물은 드묾 |
-| Reddit | `python3 .claude/skills/social-search/scripts/reddit_search.py "쿼리" --sort new --time week --limit 10` | 웹 검색은 reddit 도메인을 거부하므로 이 스크립트만 쓴다 |
+| Reddit | `python3 <이 스킬 폴더>/scripts/reddit_search.py "쿼리" --sort new --time week --limit 10` | 웹 검색은 reddit 도메인을 거부하므로 이 스크립트만 쓴다 |
 
+- `<이 스킬 폴더>`는 스킬을 불러올 때 알려주는 base directory다(예: `~/.claude/skills/social-search`). 저장소 상대 경로로 쓰지 않는다.
 - Reddit 스크립트가 종료 코드 2(`BLOCKED`)를 내면 네트워크 정책 차단이다. 결과 칸에 "차단됨"이라 쓰고, 끝에 "환경 설정 → Network access → Allowed domains에 `www.reddit.com` 추가 후 새 세션" 한 줄을 붙인다.
 - 웹 검색 결과가 비거나 엉뚱하면 쿼리를 한 번 바꿔 다시 시도한다(영어 키워드, 해시태그 형태, 브랜드 이름만). 그래도 없으면 "결과 없음"으로 적는다.
 - 예비 경로는 좋아요 수·조회수·정렬을 보장하지 못한다. 결과 끝에 이 한계를 한 줄로 적는다.
