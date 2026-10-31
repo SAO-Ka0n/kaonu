@@ -19,5 +19,15 @@ Installed as project skills, commands have no plugin prefix (`/poteto-mode`, not
 - Left out on purpose: skills that duplicate pstack, and Compound's PR skills (`ce-babysit-pr`,
   `ce-resolve-pr-feedback`), which depend on the `gh` CLI and on other Compound skills.
 - `.claude/settings.json` denies the claude.ai synced skills that pstack replaces.
+- The root `CLAUDE.md` routes every request through poteto-mode, so the flow starts from a plain chat message.
+  Most pstack and Matt skills set `disable-model-invocation: true`, so `CLAUDE.md` tells Claude to read their
+  `SKILL.md` instead of calling them with the Skill tool.
+
+## Using this outside this repo (local machine)
+
+Copy `.claude/skills`, `.claude/agents` and `.claude/docs` into `~/.claude/` (keep the same layout so the
+`../../docs` links resolve), and put the rules from `CLAUDE.md` into `~/.claude/CLAUDE.md` with paths changed
+to `~/.claude/skills/`. Deny rules only apply where they are written, so copy the `permissions.deny` list into
+`~/.claude/settings.json` or turn those skills off in claude.ai skill settings.
 
 To update, copy the same folders from a newer upstream commit over these and update the table.
