@@ -7,8 +7,6 @@ SRC="$(cd "$(dirname "$0")/.." && pwd -P)"
 DEST="$HOME/.claude"
 # Paths under .claude/, each copied as a whole unit. Other entries in ~/.claude are never touched.
 ITEMS='skills/* agents/*.md docs/*'
-START='<!-- kaonu-skills:start -->'
-END='<!-- kaonu-skills:end -->'
 
 BACKUP="$DEST/backups/kaonu-$(date +%Y%m%d-%H%M%S)"
 if [ -e "$BACKUP" ]; then BACKUP="$BACKUP-$$"; fi
@@ -47,67 +45,73 @@ for rel in $ITEMS; do
   install_item "$SRC/.claude/$rel" "$rel"
 done
 
-block="$TMP/block"
-{
-  echo "$START"
-  sed -E 's#(^|[^/])\.claude/(skills|docs)/#\1~/.claude/\2/#g' "$SRC/CLAUDE.md"
-  echo "$END"
-} > "$block"
-md="$DEST/CLAUDE.md"
-md_new="$TMP/CLAUDE.md"
-start_line=''
-if [ -f "$md" ]; then start_line="$(awk -v m="$START" '$0 == m { print NR; exit }' "$md")"; fi
-if [ -n "$start_line" ]; then
-  end_line="$(awk -v m="$END" -v s="$start_line" 'NR > s && $0 == m { print NR; exit }' "$md")"
-  [ -n "$end_line" ] || { echo "오류: $md 에 '$START' 는 있는데 '$END' 가 없습니다. 직접 고친 뒤 다시 실행하세요." >&2; exit 1; }
-  # tail, not awk, so a missing final newline after the block survives byte-for-byte.
-  { awk -v s="$start_line" 'NR < s' "$md"; cat "$block"; tail -n "+$((end_line + 1))" "$md"; } > "$md_new"
-elif [ -s "$md" ]; then
-  { cat "$md"; if [ -n "$(tail -c 1 "$md")" ]; then echo; fi; echo; cat "$block"; } > "$md_new"
-else
-  cp "$block" "$md_new"
-fi
-install_item "$md_new" CLAUDE.md
-md_status="$STATUS"
+# A rules file, not ~/.claude/CLAUDE.md, which other runtimes share and this script must never edit.
+rules_new="$TMP/kaonu-skills.md"
+sed -E 's#(^|[^/])\.claude/(skills|docs)/#\1~/.claude/\2/#g' "$SRC/CLAUDE.md" > "$rules_new"
+install_item "$rules_new" rules/kaonu-skills.md
+rules_status="$STATUS"
 
+# Writes the merged settings to argv[3] and prints "deny <count>" or "plugin <name> <value>" lines, only when something changes.
 PY='
 import json, sys
-src, dst = sys.argv[1], sys.argv[2]
+src, dst, out = sys.argv[1:4]
 with open(src, encoding="utf-8") as f:
-    want = json.load(f)["permissions"]["deny"]
+    want = json.load(f)
 try:
     with open(dst, encoding="utf-8") as f:
         cur = json.load(f)
 except FileNotFoundError:
     cur = {}
+changes = []
 deny = cur.setdefault("permissions", {}).setdefault("deny", [])
-add = [d for d in want if d not in deny]
+add = [d for d in want["permissions"]["deny"] if d not in deny]
 if add:
     deny.extend(add)
-    json.dump(cur, sys.stdout, indent=2, ensure_ascii=False)
-    print()
+    changes.append("deny %d" % len(add))
+for name, value in want.get("enabledPlugins", {}).items():
+    plugins = cur.setdefault("enabledPlugins", {})
+    if name not in plugins or plugins[name] != value:
+        plugins[name] = value
+        changes.append("plugin %s %s" % (name, json.dumps(value)))
+if changes:
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(cur, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    print("\n".join(changes))
 '
 JS='
 const fs = require("fs");
-const [src, dst] = process.argv.slice(1);
-const want = JSON.parse(fs.readFileSync(src, "utf8")).permissions.deny;
+const [src, dst, out] = process.argv.slice(1);
+const want = JSON.parse(fs.readFileSync(src, "utf8"));
 const cur = fs.existsSync(dst) ? JSON.parse(fs.readFileSync(dst, "utf8")) : {};
+const changes = [];
 cur.permissions = cur.permissions || {};
 const deny = (cur.permissions.deny = cur.permissions.deny || []);
-const add = want.filter((d) => !deny.includes(d));
+const add = want.permissions.deny.filter((d) => !deny.includes(d));
 if (add.length) {
   deny.push(...add);
-  process.stdout.write(JSON.stringify(cur, null, 2) + "\n");
+  changes.push(`deny ${add.length}`);
+}
+for (const [name, value] of Object.entries(want.enabledPlugins || {})) {
+  const plugins = (cur.enabledPlugins = cur.enabledPlugins || {});
+  if (plugins[name] !== value) {
+    plugins[name] = value;
+    changes.push(`plugin ${name} ${JSON.stringify(value)}`);
+  }
+}
+if (changes.length) {
+  fs.writeFileSync(out, JSON.stringify(cur, null, 2) + "\n");
+  process.stdout.write(changes.join("\n") + "\n");
 }
 '
 settings_src="$SRC/.claude/settings.json"
 settings_new="$TMP/settings.json"
-merge_deny() {
+merge_settings() {
   if command -v python3 >/dev/null 2>&1; then python3 -I -c "$PY" "$@"; else node -e "$JS" "$@"; fi
 }
 if ! command -v python3 >/dev/null 2>&1 && ! command -v node >/dev/null 2>&1; then
   settings_status=manual
-elif ! merge_deny "$settings_src" "$DEST/settings.json" > "$settings_new"; then
+elif ! settings_changes="$(merge_settings "$settings_src" "$DEST/settings.json" "$settings_new")"; then
   settings_status=failed
 elif [ -s "$settings_new" ]; then
   install_item "$settings_new" settings.json
@@ -120,9 +124,9 @@ echo
 echo "설치 위치: $DEST (원본: $SRC)"
 echo "항목: 새로 설치 $NEW개, 갱신 $UPDATED개, 그대로 $SAME개"
 if [ -n "$UPDATED_LIST" ]; then echo "갱신한 항목:$UPDATED_LIST"; fi
-case "$md_status" in
-  same) echo "CLAUDE.md: 변경 없음" ;;
-  *) echo "CLAUDE.md: kaonu-skills 블록을 썼습니다" ;;
+case "$rules_status" in
+  same) echo "rules/kaonu-skills.md: 변경 없음" ;;
+  *) echo "rules/kaonu-skills.md: 규칙을 썼습니다 ($DEST/CLAUDE.md 는 건드리지 않습니다)" ;;
 esac
 case "$settings_status" in
   same) echo "settings.json: 변경 없음" ;;
@@ -131,8 +135,18 @@ case "$settings_status" in
     echo "settings.json: python3 와 node 가 없어 자동으로 합치지 못했습니다."
     echo "  $DEST/settings.json 의 permissions.deny 에 아래 항목을 직접 추가하세요:"
     sed -n '/"deny"/,/\]/p' "$settings_src"
+    echo "  enabledPlugins 에는 아래 값을 직접 넣으세요:"
+    sed -n '/"enabledPlugins"/,/}/p' "$settings_src"
     ;;
-  *) echo "settings.json: permissions.deny 항목을 추가했습니다" ;;
+  *)
+    echo "$settings_changes" | while read -r kind name value; do
+      case "$kind:$value" in
+        deny:*) echo "settings.json: permissions.deny 에 ${name}개 항목을 추가했습니다" ;;
+        plugin:false) echo "settings.json: 겹치는 플러그인 $name 을 껐습니다" ;;
+        plugin:*) echo "settings.json: 플러그인 $name 을 $value 로 맞췄습니다" ;;
+      esac
+    done
+    ;;
 esac
 if [ -d "$BACKUP" ]; then echo "백업: $BACKUP"; fi
 echo

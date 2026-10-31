@@ -23,5 +23,10 @@
       "Skill(anthropic-skills:ponytail-debt)",
       "Skill(anthropic-skills:ponytail-audit)"
     ]
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": false,
+    "ponytail@ponytail": false,
+    "feature-dev@claude-plugins-official": false
   }
 }

@@ -27,7 +27,7 @@ To update the vendored copies, copy the same folders from a newer upstream commi
 
 ## 다른 프로젝트에서도 쓰기 (맥북 로컬)
 
-To get the same skills, agents, docs, `CLAUDE.md` rules and deny list in every project on your Mac:
+To get the same skills, agents, docs, rules, deny list and plugin settings in every project on your Mac:
 
 ```sh
 git clone https://github.com/SAO-Ka0n/kaonu.git ~/kaonu && ~/kaonu/scripts/install-global.sh
@@ -35,7 +35,17 @@ git clone https://github.com/SAO-Ka0n/kaonu.git ~/kaonu && ~/kaonu/scripts/insta
 
 To update later: `cd ~/kaonu && git pull && ./scripts/install-global.sh`.
 
-The script copies `.claude/{skills,agents,docs}` into `~/.claude/`, writes the root `CLAUDE.md` rules into a
-`<!-- kaonu-skills:start -->` block in `~/.claude/CLAUDE.md`, and adds the `permissions.deny` list to
-`~/.claude/settings.json`. Re-running it changes nothing that is already current. Anything it replaces is moved
-to `~/.claude/backups/kaonu-<timestamp>/` first. Other skills and settings are left alone.
+The script copies `.claude/{skills,agents,docs}` into `~/.claude/` and writes the root `CLAUDE.md` rules, with paths
+pointed at `~/.claude/`, to `~/.claude/rules/kaonu-skills.md`. Claude Code loads that file in every project. The file says
+pstack wins over any conflicting instruction, because user rules and `CLAUDE.md` files do not override each other on
+their own. The script never modifies `~/.claude/CLAUDE.md`, which other runtimes may share. In
+`~/.claude/settings.json` it adds the `permissions.deny` list and sets the repo's `enabledPlugins` entries, which
+disable the plugins that overlap pstack (`superpowers`, `ponytail`, `feature-dev`). Other plugins and settings are
+left alone. Re-running it changes nothing that is already current. Anything it replaces is moved to
+`~/.claude/backups/kaonu-<timestamp>/` first.
+
+Let local Claude do it. Paste this into Claude Code on the Mac:
+
+```text
+~/kaonu가 없으면 https://github.com/SAO-Ka0n/kaonu.git 을 ~/kaonu로 clone하고, 있으면 git pull 한 뒤 ~/kaonu/scripts/install-global.sh 를 실행해. 출력 결과를 그대로 보여줘.
+```
